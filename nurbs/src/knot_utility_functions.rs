@@ -1238,6 +1238,92 @@ mod tests {
             assert!(f64_equal(basis_ders[2][2], 1.0));
         }
    
+        #[test]
+        fn test_mid() {
+            let knots = vec![0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 4.0, 5.0, 5.0, 5.0];
+            let degree = 2;
+            let u_value_0 = 2.5;
+            let u_value_1 = 3.0;
+
+            // u: 2.5
+            let span_index = find_span_param(degree, &knots, u_value_0, K_TOLERANCE);
+            assert_eq!(span_index, 4);
+
+            let basis_ders =
+                ders_basis_fun(span_index as usize, u_value_0, degree as usize, 2, &knots);
+            assert_eq!(basis_ders.len(), 3);
+            assert_eq!(basis_ders[0].len(), 3);
+            assert!(f64_equal(basis_ders[0][0], 0.125));
+            assert!(f64_equal(basis_ders[0][1], 0.75));
+            assert!(f64_equal(basis_ders[0][2], 0.125));
+
+            assert!(f64_equal(basis_ders[1][0], -0.5));
+            assert!(f64_equal(basis_ders[1][1], 0.0));
+            assert!(f64_equal(basis_ders[1][2], 0.5));
+
+            assert!(f64_equal(basis_ders[2][0], 1.0));
+            assert!(f64_equal(basis_ders[2][1], -2.0));
+            assert!(f64_equal(basis_ders[2][2], 1.0));
+
+            // u: 3.0
+            let span_index = find_span_param(degree, &knots, u_value_1, K_TOLERANCE);
+            assert_eq!(span_index, 5);
+
+            let basis_ders =
+                ders_basis_fun(span_index as usize, u_value_1, degree as usize, 2, &knots);
+            assert_eq!(basis_ders.len(), 3);
+            assert_eq!(basis_ders[0].len(), 3);
+            assert!(f64_equal(basis_ders[0][0], 0.5));
+            assert!(f64_equal(basis_ders[0][1], 0.5));
+            assert!(f64_equal(basis_ders[0][2], 0.0));
+
+            assert!(f64_equal(basis_ders[1][0], -1.0));
+            assert!(f64_equal(basis_ders[1][1], 1.0));
+            assert!(f64_equal(basis_ders[1][2], 0.0));
+
+            assert!(f64_equal(basis_ders[2][0], 1.0));
+            assert!(f64_equal(basis_ders[2][1], -3.0));
+            assert!(f64_equal(basis_ders[2][2], 2.0));
+        }
+
+        #[test]
+        fn test_max() {
+            let knots = vec![0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 4.0, 5.0, 5.0, 5.0];
+            let degree = 2;
+            let u_value = 5.0;
+            let span_index = find_span_param(degree, &knots, u_value, K_TOLERANCE);
+            assert_eq!(span_index, 7);
+
+            let basis_ders =
+                ders_basis_fun(span_index as usize, u_value, degree as usize, 2, &knots);
+            assert_eq!(basis_ders.len(), 3);
+            assert_eq!(basis_ders[0].len(), 3);
+            assert!(f64_equal(basis_ders[0][0], 0.0));
+            assert!(f64_equal(basis_ders[0][1], 0.0));
+            assert!(f64_equal(basis_ders[0][2], 1.0));
+
+            assert!(f64_equal(basis_ders[1][0], 0.0));
+            assert!(f64_equal(basis_ders[1][1], -2.0));
+            assert!(f64_equal(basis_ders[1][2], 2.0));
+
+            assert!(f64_equal(basis_ders[2][0], 2.0));
+            assert!(f64_equal(basis_ders[2][1], -4.0));
+            assert!(f64_equal(basis_ders[2][2], 2.0));
+        }
+    }
+
+    mod single_basis {
+        use crate::{
+            knot_utility_functions::{ders_basis_fun, find_span_param},
+            utility::f64_equal,
+        };
+        static K_TOLERANCE: f64 = core::f64::EPSILON;
+
+        #[test]
+        fn test_runs() {
+            assert!(true)
+        }
+
     }
 }
 
