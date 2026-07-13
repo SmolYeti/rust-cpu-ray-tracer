@@ -1,0 +1,15 @@
+[package]
+name = "ray_tracing_compute"
+version = "0.1.0"
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+image = "0.24.9"
+nurbs = { path = "../nurbs" }
+rand = "0.8.5"
+scoped_threadpool = "0.1.9"
+softbuffer = "0.3.3"
+vulkano = "0.35.2"
+winit = {version = "0.29.3", features = ["rwh_05"]}
