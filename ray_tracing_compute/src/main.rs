@@ -1,15 +1,15 @@
 use vulkano::VulkanLibrary;
 use vulkano::buffer::{Buffer, BufferCreateInfo, BufferUsage};
 use vulkano::command_buffer::{
-    AutoCommandBufferBuilder, ClearColorImageInfo, CommandBufferUsage, CopyImageToBufferInfo,
+    AutoCommandBufferBuilder, CommandBufferUsage, CopyImageToBufferInfo,
     allocator::{StandardCommandBufferAllocator, StandardCommandBufferAllocatorCreateInfo},
 };
 use vulkano::descriptor_set::{
-    DescriptorSet, DescriptorSetWithOffsets, WriteDescriptorSet,
+    DescriptorSet, WriteDescriptorSet,
     allocator::StandardDescriptorSetAllocator,
 };
 use vulkano::device::{Device, DeviceCreateInfo, QueueCreateInfo, QueueFlags};
-use vulkano::format::{ClearColorValue, Format};
+use vulkano::format::Format;
 use vulkano::image::{Image, ImageCreateInfo, ImageType, ImageUsage, view::ImageView};
 use vulkano::instance::{Instance, InstanceCreateFlags, InstanceCreateInfo};
 use vulkano::memory::allocator::{AllocationCreateInfo, MemoryTypeFilter, StandardMemoryAllocator};
@@ -27,7 +27,8 @@ use image::{ImageBuffer, Rgba};
 //      Windows: Shift + Alt + F
 //      Mac: Shift + Option + F
 
-// Following: https://vulkano.rs/01-introduction/01-introduction.html
+// Vulkano Code from: https://vulkano.rs/01-introduction/01-introduction.html
+// Ray Tracing code from: https://raytracing.github.io/books/RayTracingInOneWeekend.html
 
 fn main() {
     initalization();
@@ -43,28 +44,229 @@ mod cs {
 
                 layout(set = 0, binding = 0, rgba8) uniform writeonly image2D img;
 
-                void main() {
-                    // Mandelbrot
-                    /*vec2 norm_coordinates = (gl_GlobalInvocationID.xy + vec2(0.5)) / vec2(imageSize(img));
-                    vec2 c = (norm_coordinates - vec2(0.5)) * 2.0 - vec2(1.0, 0.0);
+                //
+                // Utilities
+                //
 
-                    vec2 z = vec2(0.0, 0.0);
-                    float i;
-                    for (i = 0.0; i < 1.0; i += 0.005) {
-                        z = vec2(
-                            z.x * z.x - z.y * z.y + c.x,
-                            z.y * z.x + z.x * z.y + c.y
-                        );
+                const float FLT_MAX = 3.402823466e+38;
 
-                        if (length(z) > 4.0) {
-                            break;
+                // https://www.shadertoy.com/view/XlGcRh
+                // Shadertoy: Hash Functions for GPU Rendering by markjarzynski
+                // https://www.pcg-random.org/
+                uint pcg(uint v)
+                {
+                    uint state = v * 747796405u + 2891336453u;
+                    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+                    return (word >> 22u) ^ word;
+                }
+
+                // http://www.jcgt.org/published/0009/03/02/
+                uvec3 pcg3d(uvec3 v) {
+
+                    v = v * 1664525u + 1013904223u;
+
+                    v.x += v.y*v.z;
+                    v.y += v.z*v.x;
+                    v.z += v.x*v.y;
+
+                    v ^= v >> 16u;
+
+                    v.x += v.y*v.z;
+                    v.y += v.z*v.x;
+                    v.z += v.x*v.y;
+
+                    return v;
+                }
+
+                float rand_float(vec3 seed) {
+                    uint hash = pcg(pcg(uint(seed.x)) + uint(seed.y));
+                    return float(hash) * (1.0/float(0xffffffffu));
+                }
+
+                float rand_float_range(vec3 seed, float min, float max) {
+                    float rand = rand_float(seed);
+                    return min + (max - min) * rand;
+                }
+
+                //
+                // Objects
+                //
+                struct Sphere {
+                    vec3 center;
+                    float radius;
+                };
+
+                const Sphere spheres[] = Sphere[](Sphere(vec3(0, 0, -1), 0.5), Sphere(vec3(0, -100.5, -1), 100.0));
+                const int sphere_count = 2;
+
+                //
+                // Intersection methods
+                //
+                struct Ray {
+                    vec3 orig;
+                    vec3 dir;
+                };
+
+                vec3 ray_at(Ray r, float t) {
+                    return (r.dir * t) + r.orig;
+                }
+
+                bool get_front_face(Ray r, vec3 out_norm) {
+                    return dot(r.dir, out_norm) < 0;
+                }
+
+                struct Interval {
+                    float min;
+                    float max;
+                };
+
+                bool interval_surrounds(Interval bounds, float val) {
+                    return bounds.min < val && val < bounds.max;
+                }
+
+                float interval_clamp(Interval bounds, float val) {
+                    if (val < bounds.min) {
+                        return bounds.min;
+                    }
+                    if (val > bounds.max) {
+                        return bounds.max;
+                    }
+                    return val;
+                }
+
+                struct HitRecord {
+                    vec3 p;
+                    vec3 normal;
+                    float t;
+                    bool front_face;
+                    bool hit;
+                };
+
+                HitRecord hit_sphere(Sphere s, Ray r, Interval ray_t) {
+                    vec3 oc = s.center - r.orig;
+                    float a = dot(r.dir, r.dir);
+                    float h = dot(r.dir, oc);
+                    float c = dot(oc, oc) - s.radius * s.radius;
+                    float discriminant = h*h - a*c;
+
+                    HitRecord rec = HitRecord(vec3(0), vec3(0), 0, true, false);
+                    if (discriminant < 0) {
+                        return rec;
+                    }
+
+                    float sqrtd = sqrt(discriminant);
+
+                    float root = (h - sqrtd) / a;
+                    if (!interval_surrounds(ray_t, root)) {
+                        root = (h + sqrtd) / a;
+                        if (!interval_surrounds(ray_t, root)) {
+                            return rec;
                         }
                     }
 
-                    vec4 to_write = vec4(vec3(i), 1.0);*/
+                    rec.t = root;
+                    rec.p = ray_at(r, root);
 
+                    vec3 out_norm = (rec.p - s.center) / s.radius;
+                    rec.front_face = get_front_face(r, out_norm);
+                    rec.normal = rec.front_face ? out_norm : -out_norm;
+                    rec.hit = true;
 
-                    vec4 to_write = vec4(gl_GlobalInvocationID.x / 1024.0, gl_GlobalInvocationID.y / 1024.0, 0.0, 1.0);
+                    return rec;
+                } 
+
+                HitRecord hit_world(Ray r, Interval ray_t) {
+                    HitRecord rec = HitRecord(vec3(0), vec3(0), 0, true, false);
+                    float closest = ray_t.max;
+
+                    for (int iter = 0; iter < sphere_count; iter++) {
+                        HitRecord temp_rec = hit_sphere(spheres[iter], r, Interval(ray_t.min, closest));
+                        if (temp_rec.hit) {
+                            closest = temp_rec.t;
+                            rec = temp_rec;
+                        }
+                    }
+
+                    return rec;
+                }
+
+                //
+                // Rendering
+                //
+
+                // Image - TODO: Move to Uniform (If we need image size outside of the camera?)
+                const float image_width = 2048;
+                const float image_height = 1024;
+
+                const int samples_per_pixel = 10;
+                const float pixel_samples_scale = 1.0 / float(samples_per_pixel);
+
+                // Camera - TODO: Move to Uniform
+                const float focal_length = 1.0;
+                const float viewport_height = 2.0;
+                const float viewport_width = viewport_height * (image_width / image_height);
+               const  vec3 camera_center = vec3(0.0, 0.0, 0.0);
+
+                // viewport vectors
+                const vec3 viewport_u = vec3(viewport_width, 0, 0);
+                const vec3 viewport_v = vec3(0, -viewport_height, 0);
+
+                // pixel deltas
+                const vec3 pixel_delta_u = viewport_u / image_width;
+                const vec3 pixel_delta_v = viewport_v / image_height;
+
+                // upper left pixel
+                const vec3 viewport_upper_left = camera_center 
+                                    - vec3(0, 0, focal_length) - viewport_u / 2 - viewport_v / 2;
+                const vec3 pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
+
+                vec3 sample_square(vec3 seed) {
+                    return vec3(rand_float(seed) - 0.5, rand_float(seed + 1) - 0.5, 0);
+                }
+
+                Ray get_ray(vec2 loc, vec3 seed) {
+                    vec3 offset = sample_square(seed);
+                    vec3 pixel_center = pixel00_loc
+                        + ((loc.x + offset.x) * pixel_delta_u)
+                        + ((loc.y + offset.y) * pixel_delta_v);
+                    vec3 ray_direction = pixel_center - camera_center;
+                    Ray r = Ray(camera_center, ray_direction);
+                    return r;
+                }
+
+                vec3 ray_color(Ray r) {
+                    HitRecord rec = hit_world(r, Interval(0, FLT_MAX));
+                    if (rec.hit) {
+                        return 0.5 * (rec.normal + vec3(1));
+                    }
+                    vec3 unit_direction = normalize(r.dir);
+                    float a = 0.5 * (unit_direction.y + 1.0);
+                    return (1.0 - a) * vec3(1.0) + a * vec3(0.5, 0.7, 1.0);
+                }
+
+                vec3 vec_to_color(vec3 color) {
+                    Interval intensity = Interval(0, 0.999);
+                    vec3 ret_color = color;
+                    ret_color.x = interval_clamp(intensity, ret_color.x);
+                    ret_color.y = interval_clamp(intensity, ret_color.y);
+                    ret_color.z = interval_clamp(intensity, ret_color.z);
+
+                    return ret_color;
+                }
+
+                void main() {
+                    vec3 pixel_center = pixel00_loc +
+                            (gl_GlobalInvocationID.x * pixel_delta_u) + (gl_GlobalInvocationID.y * pixel_delta_v);
+                    vec3 seed = pixel_center - camera_center;
+
+                    vec3 pixel_color = vec3(0, 0, 0);
+                    for (int iter = 0; iter < samples_per_pixel; iter++) {
+                        Ray r = get_ray(gl_GlobalInvocationID.xy, seed);
+                        seed += 2;
+                        pixel_color += ray_color(r);
+                    }
+
+                    vec4 to_write = vec4(vec_to_color(pixel_color * pixel_samples_scale), 1.0);
                     imageStore(img, ivec2(gl_GlobalInvocationID.xy), to_write);
                 }
             ",
@@ -121,7 +323,8 @@ fn initalization() {
 
     let memory_allocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
 
-    let image_size = 1024;
+    let image_width = 2048;
+    let image_height = 1024;
 
     let buffer = Buffer::from_iter(
         memory_allocator.clone(),
@@ -134,7 +337,7 @@ fn initalization() {
                 | MemoryTypeFilter::HOST_RANDOM_ACCESS,
             ..Default::default()
         },
-        (0..image_size * image_size * 4).map(|_| 0u8),
+        (0..image_width * image_height * 4).map(|_| 0u8),
     )
     .expect("failed to create buffer");
 
@@ -143,7 +346,7 @@ fn initalization() {
         ImageCreateInfo {
             image_type: ImageType::Dim2d,
             format: Format::R8G8B8A8_UNORM,
-            extent: [image_size, image_size, 1],
+            extent: [image_width, image_height, 1],
             usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_SRC,
             ..Default::default()
         },
@@ -217,7 +420,7 @@ fn initalization() {
                 descriptor_set,
             )
             .unwrap()
-            .dispatch([image_size / 32, image_size / 8, 1])
+            .dispatch([image_width / 32, image_height / 8, 1])
             .unwrap()
             .copy_image_to_buffer(CopyImageToBufferInfo::image_buffer(
                 image.clone(),
@@ -239,7 +442,7 @@ fn initalization() {
     future.wait(None).unwrap();
 
     let buffer_content = buffer.read().unwrap();
-    let image = ImageBuffer::<Rgba<u8>, _>::from_raw(image_size, image_size, &buffer_content[..]).unwrap();
+    let image = ImageBuffer::<Rgba<u8>, _>::from_raw(image_width, image_height, &buffer_content[..]).unwrap();
 
     image.save("image.png").unwrap();
 
