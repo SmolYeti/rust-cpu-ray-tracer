@@ -49,7 +49,7 @@ mod cs {
                 //
 
                 const float FLT_MAX = 3.402823466e+38;
-                uint currentRandomOffset = 0;
+                uint CURRENT_RAND_OFFSET = 0; // Idea from https://github.com/TwentyFiveSoftware/ray-tracing-gpu/tree/master
 
                 // https://www.shadertoy.com/view/XlGcRh
                 // Shadertoy: Hash Functions for GPU Rendering by markjarzynski
@@ -80,8 +80,8 @@ mod cs {
                 }
 
                 uvec3 seed() {
-                    currentRandomOffset += 1;
-                    const uvec3 v = floatBitsToUint(vec3(gl_GlobalInvocationID.xy, currentRandomOffset));
+                    const uvec3 v = floatBitsToUint(vec3(gl_GlobalInvocationID.xy, CURRENT_RAND_OFFSET));
+                    CURRENT_RAND_OFFSET += 1;
                     return v;
                 }
 
@@ -120,20 +120,7 @@ mod cs {
                     }
                 }
 
-                //
-                // Objects
-                //
-                struct Sphere {
-                    vec3 center;
-                    float radius;
-                };
-
-                const Sphere spheres[] = Sphere[](Sphere(vec3(0, 0, -1), 0.5), Sphere(vec3(0, -100.5, -1), 100.0));
-                const int sphere_count = 2;
-
-                //
-                // Intersection methods
-                //
+                
                 struct Ray {
                     vec3 orig;
                     vec3 dir;
@@ -146,6 +133,106 @@ mod cs {
                 bool get_front_face(Ray r, vec3 out_norm) {
                     return dot(r.dir, out_norm) < 0;
                 }
+
+                struct Material {
+                    uint type;
+                    uint index;
+                };
+                // Types:
+                // Lambertian - 0
+                // Metal - 1
+
+                struct HitRecord {
+                    vec3 p;
+                    vec3 normal;
+                    Material mat;
+                    float t;
+                    bool front_face;
+                    bool hit;
+                };
+
+                HitRecord new_hit_record() {
+                    HitRecord rec;
+                    rec.p = vec3(0);
+                    rec.normal = vec3(0);
+                    rec.mat = Material(0, 0);
+                    rec.t = 0.0;
+                    rec.front_face = true;
+                    rec.hit = false;
+                    return rec;
+                }
+
+                bool near_zero(vec3 v) {
+                    float EPSILON = 1e-8;
+                    return abs(v.x) < EPSILON && abs(v.y) < EPSILON && abs(v.z) < EPSILON;
+                }
+
+                //
+                // Materials
+                //
+
+                struct MetalMat {
+                    vec3 albedo;
+                    float fuzz;
+                };
+
+                const vec3 lambertian_mats[] = vec3[](vec3(0.8, 0.8, 0), vec3(0.1, 0.2, 0.5));
+                const MetalMat metal_mats[] = MetalMat[](MetalMat(vec3(0.8, 0.8, 0.8), 0.3), MetalMat(vec3(0.8, 0.6, 0.2), 1.0));
+
+                struct MaterialScatter {
+                    Ray ray;
+                    vec3 attenuation;
+                    bool scattered;
+                };
+
+                MaterialScatter lambertian_scatter(Ray r, HitRecord rec) {
+                    MaterialScatter ret;
+                    vec3 dir = rec.normal + rand_vec3_unit();
+                    if (near_zero(dir)) {
+                        dir = rec.normal;
+                    }
+                    ret.ray = Ray(rec.p, dir);
+                    ret.attenuation = lambertian_mats[rec.mat.index];
+                    ret.scattered = true;
+                    return ret;
+                }
+
+                vec3 reflect_vec3(vec3 v, vec3 n) {
+                    return v - (2.0 * dot(v, n) * n);
+                }
+
+                MaterialScatter metal_scatter(Ray r, HitRecord rec) {
+                    MetalMat mat = metal_mats[rec.mat.index];
+                    MaterialScatter ret;
+                    vec3 dir = reflect_vec3(r.dir, rec.normal);
+                    dir = normalize(dir) + (mat.fuzz * rand_vec3_unit());
+                    ret.ray = Ray(rec.p, dir);
+                    ret.attenuation = mat.albedo;
+                    ret.scattered = true;
+                    return ret;
+                }
+
+                //
+                // Objects
+                //
+                struct Sphere {
+                    vec3 center;
+                    float radius;
+                    Material mat;
+                };
+
+                const Sphere spheres[] = Sphere[](
+                    Sphere(vec3(0, -100.5, -1), 100.0, Material(0, 0)),
+                    Sphere(vec3(0, 0, -1.2), 0.5, Material(0, 1)),
+                    Sphere(vec3(-1, 0, -1), 0.5, Material(1, 0)),
+                    Sphere(vec3(1, 0, -1), 0.5, Material(1, 1))
+                );
+
+                const int sphere_count = spheres.length();
+
+                //
+                // Intersection methods
+                //
 
                 struct Interval {
                     float min;
@@ -164,24 +251,6 @@ mod cs {
                         return bounds.max;
                     }
                     return val;
-                }
-
-                struct HitRecord {
-                    vec3 p;
-                    vec3 normal;
-                    float t;
-                    bool front_face;
-                    bool hit;
-                };
-
-                HitRecord new_hit_record() {
-                    HitRecord rec;
-                    rec.p = vec3(0);
-                    rec.normal = vec3(0);
-                    rec.t = 0.0;
-                    rec.front_face = true;
-                    rec.hit = false;
-                    return rec;
                 }
 
                 HitRecord hit_sphere(Sphere s, Ray r, Interval ray_t) {
@@ -212,6 +281,7 @@ mod cs {
                     vec3 out_norm = (rec.p - s.center) / s.radius;
                     rec.front_face = get_front_face(r, out_norm);
                     rec.normal = rec.front_face ? out_norm : -out_norm;
+                    rec.mat = s.mat;
                     rec.hit = true;
 
                     return rec;
@@ -279,13 +349,24 @@ mod cs {
                 }
 
                 vec3 ray_color(Ray r, int depth) {
-                    float color_mult = 1.0;
+                    vec3 color_mult = vec3(1);
                     for (int iter = 0; iter < depth; iter++) {
                         HitRecord rec = hit_world(r, Interval(0.001, FLT_MAX));
                         if (rec.hit) {
-                            vec3 dir = rec.normal + rand_vec3_unit();
-                            r = Ray(rec.p, dir);
-                            color_mult *= 0.5;
+                            // Scatter
+                            MaterialScatter scat;
+                            if (rec.mat.type == 0) {
+                                scat = lambertian_scatter(r, rec);
+                            } else if (rec.mat.type == 1) {
+                                scat = metal_scatter(r, rec);
+                            }
+
+                            if (scat.scattered) {
+                                r = scat.ray;
+                                color_mult *= scat.attenuation;
+                            } else {
+                                break;
+                            }
                         } else {
                             vec3 unit_direction = normalize(r.dir);
                             float a = 0.5 * (unit_direction.y + 1.0);
