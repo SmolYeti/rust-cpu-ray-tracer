@@ -49,6 +49,7 @@ mod cs {
                 //
 
                 const float FLT_MAX = 3.402823466e+38;
+                uint currentRandomOffset = 0;
 
                 // https://www.shadertoy.com/view/XlGcRh
                 // Shadertoy: Hash Functions for GPU Rendering by markjarzynski
@@ -78,14 +79,45 @@ mod cs {
                     return v;
                 }
 
-                float rand_float(vec3 seed) {
-                    uint hash = pcg(pcg(uint(seed.x)) + uint(seed.y));
+                uvec3 seed() {
+                    currentRandomOffset += 1;
+                    const uvec3 v = floatBitsToUint(vec3(gl_GlobalInvocationID.xy, currentRandomOffset));
+                    return v;
+                }
+
+                float rand_float() {
+                    uvec3 seed = seed();
+                    uint hash = pcg(pcg(pcg(seed.x) + seed.y) + seed.z);
                     return float(hash) * (1.0/float(0xffffffffu));
                 }
 
-                float rand_float_range(vec3 seed, float min, float max) {
-                    float rand = rand_float(seed);
+                float rand_float_range(float min, float max) {
+                    float rand = rand_float();
                     return min + (max - min) * rand;
+                }
+
+                vec3 rand_vec3() {
+                    uvec3 hash = pcg3d(seed());
+                    return vec3(hash)  * (1.0/float(0xffffffffu));
+                }
+
+                vec3 rand_vec3_range(float min, float max) {
+                    vec3 rand = rand_vec3();
+                    return min + (max - min) * rand;                
+                }
+
+                vec3 rand_vec3_unit() {
+                    vec3 p = rand_vec3_range(-1, 1);
+                    return normalize(p);
+                }
+
+                vec3 rand_vec3_hemisphere(vec3 normal) {
+                    vec3 unit = rand_vec3_unit();
+                    if (dot(unit, normal) > 0.0) {
+                        return unit;
+                    } else {
+                        return -unit;
+                    }
                 }
 
                 //
@@ -142,6 +174,16 @@ mod cs {
                     bool hit;
                 };
 
+                HitRecord new_hit_record() {
+                    HitRecord rec;
+                    rec.p = vec3(0);
+                    rec.normal = vec3(0);
+                    rec.t = 0.0;
+                    rec.front_face = true;
+                    rec.hit = false;
+                    return rec;
+                }
+
                 HitRecord hit_sphere(Sphere s, Ray r, Interval ray_t) {
                     vec3 oc = s.center - r.orig;
                     float a = dot(r.dir, r.dir);
@@ -149,7 +191,7 @@ mod cs {
                     float c = dot(oc, oc) - s.radius * s.radius;
                     float discriminant = h*h - a*c;
 
-                    HitRecord rec = HitRecord(vec3(0), vec3(0), 0, true, false);
+                    HitRecord rec = new_hit_record();
                     if (discriminant < 0) {
                         return rec;
                     }
@@ -176,7 +218,7 @@ mod cs {
                 } 
 
                 HitRecord hit_world(Ray r, Interval ray_t) {
-                    HitRecord rec = HitRecord(vec3(0), vec3(0), 0, true, false);
+                    HitRecord rec = new_hit_record();
                     float closest = ray_t.max;
 
                     for (int iter = 0; iter < sphere_count; iter++) {
@@ -198,14 +240,16 @@ mod cs {
                 const float image_width = 2048;
                 const float image_height = 1024;
 
-                const int samples_per_pixel = 10;
+                const int samples_per_pixel = 100;
                 const float pixel_samples_scale = 1.0 / float(samples_per_pixel);
+
+                const int max_depth = 500;
 
                 // Camera - TODO: Move to Uniform
                 const float focal_length = 1.0;
                 const float viewport_height = 2.0;
                 const float viewport_width = viewport_height * (image_width / image_height);
-               const  vec3 camera_center = vec3(0.0, 0.0, 0.0);
+                const  vec3 camera_center = vec3(0.0, 0.0, 0.0);
 
                 // viewport vectors
                 const vec3 viewport_u = vec3(viewport_width, 0, 0);
@@ -220,12 +264,12 @@ mod cs {
                                     - vec3(0, 0, focal_length) - viewport_u / 2 - viewport_v / 2;
                 const vec3 pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
-                vec3 sample_square(vec3 seed) {
-                    return vec3(rand_float(seed) - 0.5, rand_float(seed + 1) - 0.5, 0);
+                vec3 sample_square() {
+                    return vec3(rand_float() - 0.5, rand_float() - 0.5, 0);
                 }
 
-                Ray get_ray(vec2 loc, vec3 seed) {
-                    vec3 offset = sample_square(seed);
+                Ray get_ray(vec2 loc) {
+                    vec3 offset = sample_square();
                     vec3 pixel_center = pixel00_loc
                         + ((loc.x + offset.x) * pixel_delta_u)
                         + ((loc.y + offset.y) * pixel_delta_v);
@@ -234,19 +278,37 @@ mod cs {
                     return r;
                 }
 
-                vec3 ray_color(Ray r) {
-                    HitRecord rec = hit_world(r, Interval(0, FLT_MAX));
-                    if (rec.hit) {
-                        return 0.5 * (rec.normal + vec3(1));
+                vec3 ray_color(Ray r, int depth) {
+                    float color_mult = 1.0;
+                    for (int iter = 0; iter < depth; iter++) {
+                        HitRecord rec = hit_world(r, Interval(0.001, FLT_MAX));
+                        if (rec.hit) {
+                            vec3 dir = rec.normal + rand_vec3_unit();
+                            r = Ray(rec.p, dir);
+                            color_mult *= 0.5;
+                        } else {
+                            vec3 unit_direction = normalize(r.dir);
+                            float a = 0.5 * (unit_direction.y + 1.0);
+                            return color_mult * ((1.0 - a) * vec3(1.0) + a * vec3(0.5, 0.7, 1.0));
+                        }
                     }
-                    vec3 unit_direction = normalize(r.dir);
-                    float a = 0.5 * (unit_direction.y + 1.0);
-                    return (1.0 - a) * vec3(1.0) + a * vec3(0.5, 0.7, 1.0);
+                    return vec3(0);
+                }
+
+                float linear_to_gamma(float linear) {
+                    if (linear > 0) {
+                        return sqrt(linear);
+                    }
+                    return 0;
                 }
 
                 vec3 vec_to_color(vec3 color) {
-                    Interval intensity = Interval(0, 0.999);
                     vec3 ret_color = color;
+                    ret_color.x = linear_to_gamma(ret_color.x);
+                    ret_color.y = linear_to_gamma(ret_color.y);
+                    ret_color.z = linear_to_gamma(ret_color.z);
+
+                    Interval intensity = Interval(0, 0.999);
                     ret_color.x = interval_clamp(intensity, ret_color.x);
                     ret_color.y = interval_clamp(intensity, ret_color.y);
                     ret_color.z = interval_clamp(intensity, ret_color.z);
@@ -255,15 +317,10 @@ mod cs {
                 }
 
                 void main() {
-                    vec3 pixel_center = pixel00_loc +
-                            (gl_GlobalInvocationID.x * pixel_delta_u) + (gl_GlobalInvocationID.y * pixel_delta_v);
-                    vec3 seed = pixel_center - camera_center;
-
                     vec3 pixel_color = vec3(0, 0, 0);
                     for (int iter = 0; iter < samples_per_pixel; iter++) {
-                        Ray r = get_ray(gl_GlobalInvocationID.xy, seed);
-                        seed += 2;
-                        pixel_color += ray_color(r);
+                        Ray r = get_ray(gl_GlobalInvocationID.xy);
+                        pixel_color += ray_color(r, max_depth);
                     }
 
                     vec4 to_write = vec4(vec_to_color(pixel_color * pixel_samples_scale), 1.0);
