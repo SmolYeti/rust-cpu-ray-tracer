@@ -49,6 +49,12 @@ mod cs {
                 //
 
                 const float FLT_MAX = 3.402823466e+38;
+                const float PI = 3.1415926535897932385;
+
+                float degrees_to_radians(float degrees) {
+                    return degrees * PI / 180.0;
+                }
+
                 uint CURRENT_RAND_OFFSET = 0; // Idea from https://github.com/TwentyFiveSoftware/ray-tracing-gpu/tree/master
 
                 // https://www.shadertoy.com/view/XlGcRh
@@ -120,6 +126,10 @@ mod cs {
                     }
                 }
 
+                vec3 rand_vec3_unit_disk() {
+                    return vec3(rand_float_range(-1, 1), rand_float_range(-1, 1), 0);
+                }
+
                 
                 struct Ray {
                     vec3 orig;
@@ -139,8 +149,9 @@ mod cs {
                     uint index;
                 };
                 // Types:
-                // Lambertian - 0
-                // Metal - 1
+                // Lambertian : 0
+                // Metal      : 1
+                // Dielectric : 2
 
                 struct HitRecord {
                     vec3 p;
@@ -178,6 +189,7 @@ mod cs {
 
                 const vec3 lambertian_mats[] = vec3[](vec3(0.8, 0.8, 0), vec3(0.1, 0.2, 0.5));
                 const MetalMat metal_mats[] = MetalMat[](MetalMat(vec3(0.8, 0.8, 0.8), 0.3), MetalMat(vec3(0.8, 0.6, 0.2), 1.0));
+                const float dielectric_mats[] = float[](1.5, 1.0 / 1.5);
 
                 struct MaterialScatter {
                     Ray ray;
@@ -186,13 +198,14 @@ mod cs {
                 };
 
                 MaterialScatter lambertian_scatter(Ray r, HitRecord rec) {
+                    vec3 albedo = lambertian_mats[rec.mat.index];
                     MaterialScatter ret;
                     vec3 dir = rec.normal + rand_vec3_unit();
                     if (near_zero(dir)) {
                         dir = rec.normal;
                     }
                     ret.ray = Ray(rec.p, dir);
-                    ret.attenuation = lambertian_mats[rec.mat.index];
+                    ret.attenuation = albedo;
                     ret.scattered = true;
                     return ret;
                 }
@@ -212,6 +225,43 @@ mod cs {
                     return ret;
                 }
 
+                vec3 refract_vec3(vec3 uv, vec3 n, float etai_over_etat) {
+                    float cos_theta = min(dot(-uv, n), 1.0);
+                    vec3 r_out_perp = etai_over_etat * (uv + cos_theta * n);
+                    vec3 r_out_parallel = -sqrt(abs(1.0 - dot(r_out_perp, r_out_perp))) * n;
+                    return r_out_perp + r_out_parallel;
+                }
+
+                float reflectance(float cosine, float refraction_index) {
+                    float r0 = (1 - refraction_index) / (1 + refraction_index);
+                    r0 = r0 * r0;
+                    return r0 + (1 - r0) * pow((1 - cosine), 5);
+                }
+
+                MaterialScatter dielectric_scatter(Ray r, HitRecord rec) {
+                    float refraction_index = dielectric_mats[rec.mat.index];
+                    float ri = rec.front_face ? (1.0 / refraction_index) : refraction_index;
+
+                    vec3 unit_dir = normalize(r.dir);
+                    float cos_theta = min(dot(-unit_dir, rec.normal), 1.0);
+                    float sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+
+                    bool cannot_refract = ri * sin_theta > 1.0;
+                    vec3 dir;
+
+                    if (cannot_refract || reflectance(cos_theta, ri) > rand_float()) {
+                        dir = reflect_vec3(unit_dir, rec.normal);
+                    } else {
+                        dir = refract_vec3(unit_dir, rec.normal, ri);
+                    }
+
+                    MaterialScatter ret;
+                    ret.attenuation = vec3(1);
+                    ret.ray = Ray(rec.p, dir);
+                    ret.scattered = true;
+                    return ret;
+                }
+
                 //
                 // Objects
                 //
@@ -224,7 +274,8 @@ mod cs {
                 const Sphere spheres[] = Sphere[](
                     Sphere(vec3(0, -100.5, -1), 100.0, Material(0, 0)),
                     Sphere(vec3(0, 0, -1.2), 0.5, Material(0, 1)),
-                    Sphere(vec3(-1, 0, -1), 0.5, Material(1, 0)),
+                    Sphere(vec3(-1, 0, -1), 0.5, Material(2, 0)),
+                    Sphere(vec3(-1, 0, -1), 0.4, Material(2, 1)),
                     Sphere(vec3(1, 0, -1), 0.5, Material(1, 1))
                 );
 
@@ -313,17 +364,30 @@ mod cs {
                 const int samples_per_pixel = 100;
                 const float pixel_samples_scale = 1.0 / float(samples_per_pixel);
 
-                const int max_depth = 500;
+                const int max_depth = 50;
+                const float vfov = 20;
+                const vec3 look_from = vec3(-2, 2, 1);
+                const vec3 look_at = vec3(0, 0, -1);
+                const vec3 v_up = vec3(0, 1, 0);
+
+                const float defocus_angle = 10.0;
+                const float focus_dist = 3.4;
 
                 // Camera - TODO: Move to Uniform
-                const float focal_length = 1.0;
-                const float viewport_height = 2.0;
+                const float theta = vfov * PI / 180.0;
+                const float h = tan(theta / 2);
+                const float viewport_height = 2.0 * h * focus_dist;
                 const float viewport_width = viewport_height * (image_width / image_height);
-                const  vec3 camera_center = vec3(0.0, 0.0, 0.0);
+                const  vec3 camera_center = look_from;
+
+                // Unit basis vectors
+                const vec3 w = normalize(look_from - look_at);
+                const vec3 u = normalize(cross(v_up, w));
+                const vec3 v = cross(w, u);
 
                 // viewport vectors
-                const vec3 viewport_u = vec3(viewport_width, 0, 0);
-                const vec3 viewport_v = vec3(0, -viewport_height, 0);
+                const vec3 viewport_u = viewport_width * u;
+                const vec3 viewport_v =viewport_height * -v;
 
                 // pixel deltas
                 const vec3 pixel_delta_u = viewport_u / image_width;
@@ -331,20 +395,38 @@ mod cs {
 
                 // upper left pixel
                 const vec3 viewport_upper_left = camera_center 
-                                    - vec3(0, 0, focal_length) - viewport_u / 2 - viewport_v / 2;
+                                    - (focus_dist * w) - viewport_u / 2 - viewport_v / 2;
                 const vec3 pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
-                vec3 sample_square() {
-                    return vec3(rand_float() - 0.5, rand_float() - 0.5, 0);
+                // Defocus basis vectors
+                const float defocus_radius = focus_dist * tan((defocus_angle * 0.5) * PI / 180.0);
+                const vec3 defocus_disk_u = u * defocus_radius;
+                const vec3 defocus_disk_v = v * defocus_radius;
+
+                vec2 sample_square() {
+                    return vec2(rand_float() - 0.5, rand_float() - 0.5);
+                }
+
+                vec3 defocus_disk_sample() {
+                    vec2 p = vec2(0);
+                    for (int iter = 0; iter < 10; iter++) {
+                        vec2 temp = vec2(rand_float_range(-1, 1), rand_float_range(-1, 1));
+                        if (dot(temp, temp) < 1) {
+                            p = temp;
+                            break;
+                        }
+                    }
+                    return camera_center + (p.x * defocus_disk_u) + (p.y * defocus_disk_v);
                 }
 
                 Ray get_ray(vec2 loc) {
-                    vec3 offset = sample_square();
+                    vec2 offset = sample_square();
                     vec3 pixel_center = pixel00_loc
                         + ((loc.x + offset.x) * pixel_delta_u)
                         + ((loc.y + offset.y) * pixel_delta_v);
-                    vec3 ray_direction = pixel_center - camera_center;
-                    Ray r = Ray(camera_center, ray_direction);
+                    vec3 ray_origin = (defocus_angle <= 0) ? camera_center : defocus_disk_sample();
+                    vec3 ray_direction = pixel_center - ray_origin;
+                    Ray r = Ray(ray_origin, ray_direction);
                     return r;
                 }
 
@@ -359,6 +441,8 @@ mod cs {
                                 scat = lambertian_scatter(r, rec);
                             } else if (rec.mat.type == 1) {
                                 scat = metal_scatter(r, rec);
+                            } else if (rec.mat.type == 2) {
+                                scat = dielectric_scatter(r, rec);
                             }
 
                             if (scat.scattered) {
