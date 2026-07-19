@@ -1,12 +1,12 @@
 #version 460
 
-layout(local_size_x = 32, local_size_y = 8, local_size_z = 1) in;
+layout(local_size_x = 16, local_size_y = 8, local_size_z = 1) in;
 
 //
 // Constants
 //
                 
-const float FLT_MAX = 3.402823466e+38;
+const float FLT_MAX = 10000000.0;
 const float PI = 3.1415926535897932385;
 
 //
@@ -64,9 +64,9 @@ layout(set = 0, binding = 4, std430) buffer readonly Spheres {
 
 // TODO: Should probably be specialized constants 
 layout(set = 0, binding = 5) uniform readonly QualityParameters {
-    int samples_per_pixel;
+    uint samples_per_pixel;
     int max_depth;
-    int sphere_count;
+    uint sphere_count;
 } quality;
 
 float pixel_samples_scale = 1.0 / float(quality.samples_per_pixel);

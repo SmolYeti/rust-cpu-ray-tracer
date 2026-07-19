@@ -23,6 +23,8 @@ use std::sync::Arc;
 
 use image::{ImageBuffer, Rgba};
 
+use rand;
+
 // Auto Format:
 //      Windows: Shift + Alt + F
 //      Mac: Shift + Option + F
@@ -107,8 +109,8 @@ fn initalization() {
     let memory_allocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
 
     // Image buffer
-    let image_width = 2048;
-    let image_height = 1024;
+    let image_width = 512;
+    let image_height = 256;
 
     let buffer = Buffer::from_iter(
         memory_allocator.clone(),
@@ -142,17 +144,89 @@ fn initalization() {
     .unwrap();
 
     let image_view = ImageView::new_default(image.clone()).unwrap();
+    // Build scene
+    let mut lambertian_materials: Vec<[f32; 4]> = vec![];
+    let mut metal_materials: Vec<cs::MetalMat> = vec![];
+    let dielectric_materials: Vec<f32> = vec![1.5];
+    let mut spheres: Vec<Sphere> = vec![];
+
+    // Ground
+    spheres.push(
+        Sphere{center_rad: [0.0, -1000.0, 0.0, 1000.0],
+        mat: Material{mat: 0, index: lambertian_materials.len() as u32},
+        _pad: [0, 0]}
+    );
+    lambertian_materials.push([0.5, 0.5, 0.5, 0.0]);
+
+    for a in -7..7 {
+        for b in -7..7 {
+            let rand_mat: f32 = rand::random();
+            let sphere: [f32; 4] = [a as f32 + 0.9 * rand::random::<f32>(), 0.2, b as f32 + 0.9 * rand::random::<f32>(), 0.2];
+
+            let pos_vec: [f32; 2] = [sphere[0] - 4.0, sphere[2]];
+            let dist: f32 = (pos_vec[0] * pos_vec[0] + pos_vec[1] * pos_vec[1]).sqrt();
+            if dist > 0.9 {
+                if rand_mat < 0.8 {
+                    // diffuse
+                    spheres.push(
+                        Sphere{center_rad: sphere,
+                        mat: Material{mat: 0, index: lambertian_materials.len() as u32},
+                        _pad: [0, 0]}
+                    );
+                    lambertian_materials.push([rand::random(), rand::random(), rand::random(), 0.0]);
+                } else if rand_mat < 0.95 {
+                    let albedo  = [rand::random::<f32>() * 0.5 + 1.0, rand::random::<f32>() * 0.5 + 1.0, rand::random::<f32>() * 0.5 + 1.0];
+                    let fuzz = rand::random::<f32>() * 0.5;
+                    spheres.push(
+                        Sphere{center_rad: sphere,
+                        mat: Material{mat: 1, index: metal_materials.len() as u32},
+                        _pad: [0, 0]}
+                    );
+                    metal_materials.push(cs::MetalMat{albedo, fuzz});
+                } else {
+                    spheres.push(
+                        Sphere{center_rad: sphere,
+                        mat: Material{mat: 2, index: 0},
+                        _pad: [0, 0]}
+                    );
+                }
+            }
+        }
+    }
+
+    // Sphere 1:
+    spheres.push(
+        Sphere{center_rad: [0.0, 1.0, 0.0, 1.0],
+        mat: Material{mat: 2, index: 0},
+        _pad: [0, 0]}
+    );
+
+    // Sphere 2:
+    spheres.push(
+        Sphere{center_rad: [-4.0, 1.0, 0.0, 1.0],
+        mat: Material{mat: 0, index: lambertian_materials.len() as u32},
+        _pad: [0, 0]}
+    );
+    lambertian_materials.push([0.4, 0.2, 0.1, 0.0]);
+
+    // Sphere 3:
+    spheres.push(
+        Sphere{center_rad: [4.0, 1.0, 0.0, 1.0],
+        mat: Material{mat: 1, index: metal_materials.len() as u32},
+        _pad: [0, 0]}
+    );
+    metal_materials.push(cs::MetalMat{albedo: [0.7, 0.6, 0.5], fuzz: 0.0});
 
     // Materials
-    let lambertian_materials: [[f32; 4]; _] = [ // Note the buffer bit
+    /*let lambertian_materials: Vec<[f32; 4]> = vec![ // Note the buffer bit
         [0.8, 0.8, 0.0, 1.0],
         [0.1, 0.2, 0.5, 1.0]
     ]; 
-    let metal_materials: [cs::MetalMat; _] = [
+    let metal_materials: Vec<cs::MetalMat> = vec![
         cs::MetalMat{albedo: [0.8, 0.8, 0.8], fuzz: 0.3},
         cs::MetalMat{albedo: [0.8, 0.6, 0.2], fuzz: 1.0}
     ];
-    let dielectric_materials: [f32; _] = [1.5, 1.0 / 1.5];
+    let dielectric_materials: Vec<f32> = vec![1.5, 1.0 / 1.5];*/
     
     let lambertian_buffer = Buffer::from_iter(
         memory_allocator.clone(),
@@ -200,13 +274,14 @@ fn initalization() {
     .unwrap();
 
     // Spheres
-    let spheres: [Sphere; _] = [
+    /*let spheres: Vec<Sphere> = vec![
         Sphere{center_rad: [0.0, -100.5, -1.0, 100.0], mat: Material{mat: 0, index: 0}, _pad: [0, 0]},
         Sphere{center_rad: [0.0, 0.0, -1.2, 0.5], mat: Material{mat: 0, index: 1}, _pad: [0, 0]},
         Sphere{center_rad: [-1.0, 0.0, -1.0, 0.5], mat: Material{mat: 2, index: 0}, _pad: [0, 0]},
         Sphere{center_rad: [-1.0, 0.0, -1.0, 0.4], mat: Material{mat: 2, index: 1}, _pad: [0, 0]},
         Sphere{center_rad: [1.0, 0.0, -1.0, 0.5], mat: Material{mat: 1, index: 1}, _pad: [0, 0]},
-    ];
+    ];*/
+    let sphere_count = spheres.len() as u32;
 
     let spheres_buffer = Buffer::from_iter(
         memory_allocator.clone(),
@@ -239,9 +314,9 @@ fn initalization() {
     .unwrap();
 
     let quality_data = cs::QualityParameters {
-        samples_per_pixel: 100,
-        max_depth: 100,
-        sphere_count: spheres.len() as i32,
+        samples_per_pixel: 10,
+        max_depth: 50,
+        sphere_count: sphere_count,
     };
 
     *quality_buffer.write().unwrap() = quality_data;
@@ -262,14 +337,14 @@ fn initalization() {
     .unwrap();
 
     let camera_data = cs::CameraSettings {
-        look_from: [-2.0, 2.0, 1.0].into(),
-        look_at: [0.0, 0.0, -1.0].into(),
+        look_from: [13.0, 2.0, 3.0].into(),
+        look_at: [0.0, 0.0, 0.0].into(),
         v_up: [0.0, 1.0, 0.0].into(),
-        image_width: 2048.0,
-        image_height: 1024.0,
+        image_width: image_width as f32,
+        image_height: image_height as f32,
         vfov: 20.0,
-        defocus_angle: 0.0,
-        focus_dist: 3.4,
+        defocus_angle: 0.6,
+        focus_dist: 10.0,
     };
 
     *camera_buffer.write().unwrap() = camera_data;
@@ -361,7 +436,7 @@ fn initalization() {
                 descriptor_set,
             )
             .unwrap()
-            .dispatch([image_width / 32, image_height / 8, 1])
+            .dispatch([image_width / 16, image_height / 8, 1])
             .unwrap()
             .copy_image_to_buffer(CopyImageToBufferInfo::image_buffer(
                 image.clone(),
