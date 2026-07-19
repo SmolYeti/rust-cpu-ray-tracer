@@ -41,6 +41,21 @@ mod cs {
     }
 }
 
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, vulkano::buffer::BufferContents)]
+struct Material {
+    mat: u32,
+    index: u32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, vulkano::buffer::BufferContents)]
+struct Sphere {
+    center_rad: [f32; 4],
+    mat : Material,
+    _pad: [u32; 2],
+}
+
 fn initalization() {
     let library = VulkanLibrary::new().expect("no local Vulkan library/DLL");
     let instance = Instance::new(
@@ -128,6 +143,86 @@ fn initalization() {
 
     let image_view = ImageView::new_default(image.clone()).unwrap();
 
+    // Materials
+    let lambertian_materials: [[f32; 4]; _] = [ // Note the buffer bit
+        [0.8, 0.8, 0.0, 1.0],
+        [0.1, 0.2, 0.5, 1.0]
+    ]; 
+    let metal_materials: [cs::MetalMat; _] = [
+        cs::MetalMat{albedo: [0.8, 0.8, 0.8], fuzz: 0.3},
+        cs::MetalMat{albedo: [0.8, 0.6, 0.2], fuzz: 1.0}
+    ];
+    let dielectric_materials: [f32; _] = [1.5, 1.0 / 1.5];
+    
+    let lambertian_buffer = Buffer::from_iter(
+        memory_allocator.clone(),
+        BufferCreateInfo {
+            usage: BufferUsage::STORAGE_BUFFER,
+            ..Default::default()
+        },
+        AllocationCreateInfo {
+            memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
+                | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+            ..Default::default()
+        },
+        lambertian_materials,
+    )
+    .unwrap();
+
+    let metal_buffer = Buffer::from_iter(
+        memory_allocator.clone(),
+        BufferCreateInfo {
+            usage: BufferUsage::STORAGE_BUFFER,
+            ..Default::default()
+        },
+        AllocationCreateInfo {
+            memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
+                | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+            ..Default::default()
+        },
+        metal_materials,
+    )
+    .unwrap();
+
+    let dielectric_buffer = Buffer::from_iter(
+        memory_allocator.clone(),
+        BufferCreateInfo {
+            usage: BufferUsage::STORAGE_BUFFER,
+            ..Default::default()
+        },
+        AllocationCreateInfo {
+            memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
+                | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+            ..Default::default()
+        },
+        dielectric_materials,
+    )
+    .unwrap();
+
+    // Spheres
+    let spheres: [Sphere; _] = [
+        Sphere{center_rad: [0.0, -100.5, -1.0, 100.0], mat: Material{mat: 0, index: 0}, _pad: [0, 0]},
+        Sphere{center_rad: [0.0, 0.0, -1.2, 0.5], mat: Material{mat: 0, index: 1}, _pad: [0, 0]},
+        Sphere{center_rad: [-1.0, 0.0, -1.0, 0.5], mat: Material{mat: 2, index: 0}, _pad: [0, 0]},
+        Sphere{center_rad: [-1.0, 0.0, -1.0, 0.4], mat: Material{mat: 2, index: 1}, _pad: [0, 0]},
+        Sphere{center_rad: [1.0, 0.0, -1.0, 0.5], mat: Material{mat: 1, index: 1}, _pad: [0, 0]},
+    ];
+
+    let spheres_buffer = Buffer::from_iter(
+        memory_allocator.clone(),
+        BufferCreateInfo {
+            usage: BufferUsage::STORAGE_BUFFER,
+            ..Default::default()
+        },
+        AllocationCreateInfo {
+            memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
+                | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+            ..Default::default()
+        },
+        spheres,
+    )
+    .unwrap();
+
     // Uniform buffer: Quality Parameters
     let quality_buffer: Subbuffer<cs::QualityParameters> = Buffer::new_sized(
         memory_allocator.clone(),
@@ -146,6 +241,7 @@ fn initalization() {
     let quality_data = cs::QualityParameters {
         samples_per_pixel: 100,
         max_depth: 100,
+        sphere_count: spheres.len() as i32,
     };
 
     *quality_buffer.write().unwrap() = quality_data;
@@ -171,7 +267,7 @@ fn initalization() {
         v_up: [0.0, 1.0, 0.0].into(),
         image_width: 2048.0,
         image_height: 1024.0,
-        vfov: 90.0,
+        vfov: 20.0,
         defocus_angle: 0.0,
         focus_dist: 3.4,
     };
@@ -215,10 +311,26 @@ fn initalization() {
             WriteDescriptorSet::image_view(0, image_view.clone()),
             WriteDescriptorSet::buffer(
                 1,
-                quality_buffer
+                lambertian_buffer
             ),
             WriteDescriptorSet::buffer(
                 2,
+                metal_buffer
+            ),
+            WriteDescriptorSet::buffer(
+                3,
+                dielectric_buffer
+            ),
+            WriteDescriptorSet::buffer(
+                4,
+                spheres_buffer
+            ),
+            WriteDescriptorSet::buffer(
+                5,
+                quality_buffer
+            ),
+            WriteDescriptorSet::buffer(
+                6,
                 camera_buffer
             ),
         ],

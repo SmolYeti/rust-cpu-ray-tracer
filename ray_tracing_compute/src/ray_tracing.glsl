@@ -24,16 +24,24 @@ struct MetalMat {
     float fuzz;
 };
 
-const vec3 lambertian_mats[] = vec3[](vec3(0.8, 0.8, 0), vec3(0.1, 0.2, 0.5));
-const MetalMat metal_mats[] = MetalMat[](MetalMat(vec3(0.8, 0.8, 0.8), 0.3), MetalMat(vec3(0.8, 0.6, 0.2), 1.0));
-const float dielectric_mats[] = float[](1.5, 1.0 / 1.5);
+layout(set = 0, binding = 1) buffer readonly LambertianMaterials {
+    vec3 mats[];
+} lambertian;
+
+layout(set = 0, binding = 2) buffer readonly MetalMaterials {
+    MetalMat mats[];
+} metal;
+
+layout(set = 0, binding = 3) buffer readonly DielectricMaterials {
+    float mats[];
+} dielectric;
 
 //
 // Object Buffers
 //
 
 struct Material {
-    uint type;
+    uint mat;
     uint index;
 };
 // Types:
@@ -42,28 +50,23 @@ struct Material {
 // Dielectric : 2
 
 struct Sphere {
-    vec3 center;
-    float radius;
+    vec4 center_rad;
     Material mat;
 };
 
-const Sphere spheres[] = Sphere[](
-    Sphere(vec3(0, -100.5, -1), 100.0, Material(0, 0)),
-    Sphere(vec3(0, 0, -1.2), 0.5, Material(0, 1)),
-    Sphere(vec3(-1, 0, -1), 0.5, Material(2, 0)),
-    Sphere(vec3(-1, 0, -1), 0.4, Material(2, 1)),
-    Sphere(vec3(1, 0, -1), 0.5, Material(1, 1))
-);
-
-const int sphere_count = spheres.length();
+layout(set = 0, binding = 4, std430) buffer readonly Spheres {
+    Sphere spheres[];
+} spheres;
 
 // 
 // Render Quality Uniforms
 //
 
-layout(set = 0, binding = 1) uniform readonly QualityParameters {
+// TODO: Should probably be specialized constants 
+layout(set = 0, binding = 5) uniform readonly QualityParameters {
     int samples_per_pixel;
     int max_depth;
+    int sphere_count;
 } quality;
 
 float pixel_samples_scale = 1.0 / float(quality.samples_per_pixel);
@@ -72,7 +75,7 @@ float pixel_samples_scale = 1.0 / float(quality.samples_per_pixel);
 // Camera Uniforms
 //
 
-layout(set = 0, binding = 2) uniform readonly CameraSettings {
+layout(set = 0, binding = 6) uniform readonly CameraSettings {
     vec3 look_from;
     vec3 look_at;
     vec3 v_up;
@@ -242,7 +245,7 @@ struct MaterialScatter {
 };
 
 MaterialScatter lambertian_scatter(Ray r, HitRecord rec) {
-    vec3 albedo = lambertian_mats[rec.mat.index];
+    vec3 albedo = lambertian.mats[rec.mat.index];
     MaterialScatter ret;
     vec3 dir = rec.normal + rand_vec3_unit();
     if (near_zero(dir)) {
@@ -259,7 +262,7 @@ vec3 reflect_vec3(vec3 v, vec3 n) {
 }
 
 MaterialScatter metal_scatter(Ray r, HitRecord rec) {
-    MetalMat mat = metal_mats[rec.mat.index];
+    MetalMat mat = metal.mats[rec.mat.index];
     MaterialScatter ret;
     vec3 dir = reflect_vec3(r.dir, rec.normal);
     dir = normalize(dir) + (mat.fuzz * rand_vec3_unit());
@@ -283,7 +286,7 @@ float reflectance(float cosine, float refraction_index) {
 }
 
 MaterialScatter dielectric_scatter(Ray r, HitRecord rec) {
-    float refraction_index = dielectric_mats[rec.mat.index];
+    float refraction_index = dielectric.mats[rec.mat.index];
     float ri = rec.front_face ? (1.0 / refraction_index) : refraction_index;
 
     vec3 unit_dir = normalize(r.dir);
@@ -330,10 +333,10 @@ float interval_clamp(Interval bounds, float val) {
 }
 
 HitRecord hit_sphere(Sphere s, Ray r, Interval ray_t) {
-    vec3 oc = s.center - r.orig;
+    vec3 oc = s.center_rad.xyz - r.orig;
     float a = dot(r.dir, r.dir);
     float h = dot(r.dir, oc);
-    float c = dot(oc, oc) - s.radius * s.radius;
+    float c = dot(oc, oc) - s.center_rad.w * s.center_rad.w;
     float discriminant = h*h - a*c;
 
     HitRecord rec = new_hit_record();
@@ -354,7 +357,7 @@ HitRecord hit_sphere(Sphere s, Ray r, Interval ray_t) {
     rec.t = root;
     rec.p = ray_at(r, root);
 
-    vec3 out_norm = (rec.p - s.center) / s.radius;
+    vec3 out_norm = (rec.p - s.center_rad.xyz) / s.center_rad.w;
     rec.front_face = get_front_face(r, out_norm);
     rec.normal = rec.front_face ? out_norm : -out_norm;
     rec.mat = s.mat;
@@ -367,8 +370,8 @@ HitRecord hit_world(Ray r, Interval ray_t) {
     HitRecord rec = new_hit_record();
     float closest = ray_t.max;
 
-    for (int iter = 0; iter < sphere_count; iter++) {
-        HitRecord temp_rec = hit_sphere(spheres[iter], r, Interval(ray_t.min, closest));
+    for (int iter = 0; iter < quality.sphere_count; iter++) {
+        HitRecord temp_rec = hit_sphere(spheres.spheres[iter], r, Interval(ray_t.min, closest));
         if (temp_rec.hit) {
             closest = temp_rec.t;
             rec = temp_rec;
@@ -416,11 +419,11 @@ vec3 ray_color(Ray r, int depth) {
         if (rec.hit) {
             // Scatter
             MaterialScatter scat;
-            if (rec.mat.type == 0) {
+            if (rec.mat.mat == 0) {
                 scat = lambertian_scatter(r, rec);
-            } else if (rec.mat.type == 1) {
+            } else if (rec.mat.mat == 1) {
                 scat = metal_scatter(r, rec);
-            } else if (rec.mat.type == 2) {
+            } else if (rec.mat.mat == 2) {
                 scat = dielectric_scatter(r, rec);
             }
 
