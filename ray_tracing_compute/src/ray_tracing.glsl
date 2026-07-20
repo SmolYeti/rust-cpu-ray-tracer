@@ -1,12 +1,12 @@
 #version 460
 
-layout(local_size_x = 16, local_size_y = 8, local_size_z = 1) in;
+layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
 //
 // Constants
 //
                 
-const float FLT_MAX = 10000000.0;
+const float FLT_MAX = 100000000.0;
 const float PI = 3.1415926535897932385;
 
 //
@@ -121,7 +121,7 @@ vec3 defocus_disk_v = v * defocus_radius;
 // Utilities
 //
 
-uint CURRENT_RAND_OFFSET = 0; // Idea from https://github.com/TwentyFiveSoftware/ray-tracing-gpu/tree/master
+uint current_rand_offset = 0; // Idea from https://github.com/TwentyFiveSoftware/ray-tracing-gpu/tree/master
 
 // https://www.shadertoy.com/view/XlGcRh
 // Shadertoy: Hash Functions for GPU Rendering by markjarzynski
@@ -152,8 +152,11 @@ uvec3 pcg3d(uvec3 v) {
 }
 
 uvec3 seed() {
-    const uvec3 v = floatBitsToUint(vec3(gl_GlobalInvocationID.xy, CURRENT_RAND_OFFSET));
-    CURRENT_RAND_OFFSET += 1;
+    const uvec3 v = floatBitsToUint(vec3(gl_GlobalInvocationID.xy, current_rand_offset));
+    current_rand_offset += 1;
+    if (current_rand_offset >= 0xFFFFFFF0u) {
+        current_rand_offset = 0;
+    }
     return v;
 }
 
