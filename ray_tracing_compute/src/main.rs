@@ -116,8 +116,8 @@ fn initalization() {
     let memory_allocator = Arc::new(StandardMemoryAllocator::new_default(device.clone()));
 
     // Image buffer
-    let image_width = 2048;
-    let image_height = 1024;
+    let image_width = 512;
+    let image_height = 256;
 
     let buffer = Buffer::from_iter(
         memory_allocator.clone(),
@@ -353,7 +353,7 @@ fn initalization() {
     .unwrap();
 
     let quality_data = cs::QualityParameters {
-        samples_per_pixel: 100,
+        samples_per_pixel: 500,
         max_depth: 50,
         sphere_count: sphere_count,
     };

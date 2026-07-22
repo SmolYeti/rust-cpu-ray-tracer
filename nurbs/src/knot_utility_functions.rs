@@ -148,17 +148,19 @@ pub fn multiplicity_param(degree: u32, knots: &Vec<f64>, param: f64, tolerance: 
 // N - Returned basis vector
 pub fn basis_fun(span: u32, u: f64, degree: u32, knots: &Vec<f64>, tolerance: f64) -> Vec<f64> {
     let u = u.min(knots[knots.len() - 1]);
-    let mut bases = vec![0.0; degree as usize + 1];
-    if span >= knots.len() as u32 - degree - 2
-        || (u >= knots[span as usize] - tolerance && u < knots[span as usize + 1] - tolerance)
+    let span = span as usize;
+    let degree = degree as usize;
+    let mut bases = vec![0.0; degree + 1];
+    if span >= knots.len() - degree - 2
+        || (u >= knots[span] - tolerance && u < knots[span + 1] - tolerance)
     {
         bases[0] = 1.0;
     }
-    let mut left = vec![0.0; degree as usize + 1];
-    let mut right = vec![0.0; degree as usize + 1];
-    for j in 1..(degree + 1) as usize {
-        left[j] = u - knots[span as usize + 1 - j];
-        right[j] = knots[span as usize + j] - u;
+    let mut left = vec![0.0; degree + 1];
+    let mut right = vec![0.0; degree + 1];
+    for j in 1..(degree + 1) {
+        left[j] = u - knots[span + 1 - j];
+        right[j] = knots[span + j] - u;
         let mut saved = 0.0;
         for r in 0..j {
             let temp = bases[r] / (right[r + 1] + left[j - r]);
@@ -174,17 +176,14 @@ pub fn basis_fun(span: u32, u: f64, degree: u32, knots: &Vec<f64>, tolerance: f6
 // Same as above
 // n - nth derivative calculated (max)
 // ders - Returned basis derivative vector
-pub fn ders_basis_fun(
-    i: usize,
-    u: f64,
-    degree: usize,
-    n: usize,
-    knots: &Vec<f64>,
-) -> Vec<Vec<f64>> {
+pub fn ders_basis_fun(span: u32, u: f64, degree: u32, n: usize, knots: &Vec<f64>) -> Vec<Vec<f64>> {
+    let i = span as usize;
+    let degree = degree as usize;
+    let mut derivatives = vec![vec![0.0; degree + 1]; n + 1];
     if knots.is_empty() {
         Vec::new()
     } else if i + degree == knots.len() - 1 {
-        vec![vec![0.0; degree + 1]; n + 1]
+        derivatives
     } else {
         let u = u.min(knots[knots.len() - 1]);
         let mut ndu = vec![vec![0.0; degree + 1]; degree + 1];
@@ -208,7 +207,6 @@ pub fn ders_basis_fun(
             ndu[j][j] = saved;
         }
 
-        let mut derivatives = vec![vec![0.0; degree + 1]; n + 1];
         for j in 0..degree + 1 {
             derivatives[0][j] = ndu[j][degree];
         }
@@ -268,45 +266,48 @@ pub fn ders_basis_fun(
 // U - Knot vector
 // i - ith basis value
 // u - input value along the curve/knot vector
-/*double OneBasisFun(uint32_t degree, const std::vector<double> &knots,
-                   uint32_t i, double u) {
-  u = std::min(u, static_cast<double>(knots[knots.size() - 1]));
-  if ((i == 0 && u <= knots[0] + std::numeric_limits<double>::epsilon()) ||
-      (i == (static_cast<uint32_t>(knots.size()) - degree - 2) &&
-       u >= knots[knots.size() - 1] - std::numeric_limits<double>::epsilon())) {
-    return 1.0;
-  }
-  if (u < knots[i] || u >= knots[i + degree + 1]) {
-    return 0.0;
-  }
-  std::vector<double> N(degree + 1);
-  for (uint32_t j = 0; j <= degree; ++j) {
-    if (u >= knots[i + j] - std::numeric_limits<double>::epsilon() &&
-        u < knots[i + j + 1] - std::numeric_limits<double>::epsilon()) {
-      N[j] = 1.0;
+pub fn one_basis_fun(degree: u32, knots: &Vec<f64>, i: u32, param: f64) -> f64 {
+    let i = i as usize;
+    let degree = degree as usize;
+    let u = param.min(knots[knots.len() - 1]);
+
+    if (i == 0 && u <= knots[0] + f64::EPSILON)
+        || (i == knots.len() - degree - 2 && u >= knots[knots.len() - 1] - f64::EPSILON)
+    {
+        1.0
+    } else if u < knots[i] || u >= knots[i + degree + 1] {
+        0.0
     } else {
-      N[j] = 0.0;
+        let mut N: Vec<f64> = vec![0.0; degree + 1];
+        // Initialize vector
+        for j in 0..(degree + 1) {
+            if u >= knots[i + j] - f64::EPSILON && u < knots[i + j + 1] - f64::EPSILON {
+                N[j] = 1.0;
+            } else {
+                N[j] = 0.0;
+            }
+        }
+        // Calculate the degree
+        for k in 1..(degree + 1) {
+            let mut saved: f64 = 0.0;
+            if N[0].abs() > f64::EPSILON {
+                saved = ((u - knots[i]) * N[0]) / (knots[i + k] - knots[i]);
+            }
+            for j in 0..((degree + 1) - k) {
+                if N[j + 1].abs() <= f64::EPSILON {
+                    N[j] = saved;
+                    saved = 0.0;
+                } else {
+                    let u_left = knots[i + j + 1];
+                    let u_right = knots[i + j + k + 1];
+                    let temp = N[j + 1] / (u_right - u_left);
+                    N[j] = saved + ((u_right - u) * temp);
+                    saved = (u - u_left) * temp;
+                }
+            }
+        }
+        N[0]
     }
-  }
-  for (uint32_t k = 1; k <= degree; ++k) {
-    double saved = 0.0;
-    if (std::abs(N[0]) > std::numeric_limits<double>::epsilon()) {
-      saved = ((u - knots[i]) * N[0]) / (knots[i + k] - knots[i]);
-    }
-    for (uint32_t j = 0; j < degree + 1 - k; ++j) {
-      double u_left = knots[i + j + 1];
-      double u_right = knots[i + j + k + 1];
-      if (std::abs(N[j + 1]) <= std::numeric_limits<double>::epsilon()) {
-        N[j] = saved;
-        saved = 0.0;
-      } else {
-        double temp = N[j + 1] / (u_right - u_left);
-        N[j] = saved + ((u_right - u) * temp);
-        saved = (u - u_left) * temp;
-      }
-    }
-  }
-  return N[0];
 }
 
 // ALGORITHM A2.5 - DersOneBasisFun(p,m,U,i,u,n,ders)
@@ -317,87 +318,84 @@ pub fn ders_basis_fun(
 // u - input value along the curve / knot vector
 // n - nth derivative calculated(max)
 // ders - Returned basis derivative vector for only the ith basis
-std::vector<double> DersOneBasisFun(uint32_t degree,
-                                    const std::vector<double> &knots,
-                                    uint32_t i, double u, uint32_t n) {
-  u = std::min(u, knots[knots.size() - 1]);
-  // Local property
-  if (u < knots[i] - std::numeric_limits<double>::epsilon() ||
-                static_cast<size_t>(i + degree + 1) >= knots.size() /*||
-                u >= static_cast<double>(knots[i + degree + 1]) - std::numeric_limits<double>::epsilon()*/) {
-    return std::vector<double>(n + 1, 0.0);
-  }
-  std::vector<std::vector<double>> N(degree + 1);
-  for (auto &vect : N) {
-    vect.resize(degree + 1);
-  }
+pub fn ders_one_basis_fun(degree: u32, knots: &Vec<f64>, i: u32, param: f64, n: u32) -> Vec<f64> {
+    let u = param.min(knots[knots.len() - 1]);
+    let degree = degree as usize;
+    let n = n as usize;
+    let i = i as usize;
 
-  // Initialize zero-degree functs
-  for (uint32_t j = 0; j <= degree; ++j) {
-    if (u >= knots[i + j] - std::numeric_limits<double>::epsilon() &&
-        u < knots[i + j + 1] - std::numeric_limits<double>::epsilon()) {
-      N[j][0] = 1.0;
+    let mut derivatives: Vec<f64> = vec![0.0; n + 1];
+    if u < knots[i] - f64::EPSILON || i + degree + 1 >= knots.len() {
+        derivatives
     } else {
-      N[j][0] = 0.0;
-    }
-  }
+        let mut N: Vec<Vec<f64>> = vec![vec![0.0; degree + 1]; degree + 1];
 
-  // Compute full trianglar table
-  for (uint32_t k = 1; k <= degree; ++k) {
-    double saved = 0.0;
-    if (std::abs(N[0][k - 1]) > std::numeric_limits<double>::epsilon()) {
-      saved = ((u - knots[i]) * N[0][k - 1]) / (knots[i + k] - knots[i]);
-    }
-    for (uint32_t j = 0; j < degree + 1 - k; ++j) {
-      double left = knots[i + j + 1];
-      double right = knots[i + j + k + 1];
-      if (std::abs(N[j + 1][k - 1]) <= std::numeric_limits<double>::epsilon()) {
-        N[j][k] = saved;
-        saved = 0.0;
-      } else {
-        double temp = N[j + 1][k - 1] / (right - left);
-        N[j][k] = saved + ((right - u) * temp);
-        saved = (u - left) * temp;
-      }
-    }
-  }
-  std::vector<double> derivatives(n + 1);
-  // The function value
-  derivatives[0] = N[0][degree];
-  // Compute the derivatives
-  for (uint32_t k = 1; k <= n; ++k) {
-    // Load the appropriate column
-    std::vector<double> ND(k + 1);
-    for (uint32_t j = 0; j <= k; ++j) {
-      ND[j] = N[j][degree - k];
-    }
-    // Compute the table of width k
-    for (uint32_t jj = 1; jj <= k; ++jj) {
-      double saved = 0.0;
-      if (std::abs(ND[0]) > std::numeric_limits<double>::epsilon()) {
-        saved = ND[0] / (knots[i + degree + jj - k] - knots[i]);
-      }
-      for (uint32_t j = 0; j < k + 1 - jj; ++j) {
-        double left = knots[i + j + 1];
-        double right = knots[knots.size() - 1];
-        if (static_cast<size_t>(i + j + degree + jj + 1) < knots.size()) {
-          right = knots[i + j + degree + jj + 1];
+        // Initalize N
+        for j in 0..(degree + 1) {
+            if u >= knots[i + j] - f64::EPSILON && u < knots[i + j + 1] - f64::EPSILON {
+                N[j][0] = 1.0;
+            } else {
+                N[j][0] = 0.0;
+            }
         }
-        if (std::abs(ND[j + 1]) <= std::numeric_limits<double>::epsilon()) {
-          ND[j] = static_cast<double>(degree + jj - k) * saved;
-          saved = 0.0;
-        } else {
-          double temp = ND[j + 1] / (right - left);
-          ND[j] = static_cast<double>(degree + jj - k) * (saved - temp);
-          saved = temp;
+
+        // Compute full trianglar table
+        for k in 1..(degree + 1) {
+            let mut saved = 0.0;
+            if N[0][k - 1].abs() > f64::EPSILON {
+                saved = ((u - knots[i]) * N[0][k - 1]) / (knots[i + k] - knots[i]);
+            }
+            for j in 0..(degree + 1 - k) {
+                if N[j + 1][k - 1].abs() <= f64::EPSILON {
+                    N[j][k] = saved;
+                    saved = 0.0;
+                } else {
+                    let left = knots[i + j + 1];
+                    let right = knots[i + j + k + 1];
+                    let temp = N[j + 1][k - 1] / (right - left);
+                    N[j][k] = saved + ((right - u) * temp);
+                    saved = (u - left) * temp;
+                }
+            }
         }
-      }
+
+        derivatives[0] = N[0][degree];
+
+        // Compute the derivatives
+        for k in 1..(n + 1) {
+            // Load the appropriate column
+            let mut ND: Vec<f64> = vec![0.0; k + 1];
+            for j in 0..(k + 1) {
+                ND[j] = N[j][degree - k];
+            }
+            // Compute the tale of width k
+            for jj in 1..(k + 1) {
+                let mut saved = 0.0;
+                if ND[0].abs() > f64::EPSILON {
+                    saved = ND[0] / (knots[i + degree + jj - k] - knots[i]);
+                }
+                for j in 0..(k + 1 - jj) {
+                    if ND[j + 1].abs() <= f64::EPSILON {
+                        ND[j] = (degree + jj - k) as f64 * saved;
+                        saved = 0.0;
+                    } else {
+                        let left = knots[i + j + 1];
+                        let mut right = knots[knots.len() - 1];
+                        if i + j + degree + jj + 1 < knots.len() {
+                            right = knots[i + j + degree + jj + 1];
+                        }
+                        let temp = ND[j + 1] / (right - left);
+                        ND[j] = (degree + jj - k) as f64 * (saved - temp);
+                        saved = temp;
+                    }
+                }
+            }
+            derivatives[k] = ND[0];
+        }
+        derivatives
     }
-    derivatives[k] = ND[0];
-  }
-  return derivatives;
 }
-
+/*
 // ALGORITHM  ALLBasisFuns(i,u,p,U,N) p99
 // i - Span index (From find span)
 // u - input value along the curve/knot vector
@@ -739,7 +737,7 @@ mod tests {
             let span_index = find_span_param(degree, &knots, u_val, K_TOLERANCE);
             assert_eq!(span_index, 4);
 
-            let basis_ders = ders_basis_fun(span_index as usize, u_val, degree as usize, 2, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_val, degree, 2, &knots);
             assert_eq!(basis_ders.len(), 3);
             assert_eq!(basis_ders[2].len(), 3);
             assert!(
@@ -767,16 +765,14 @@ mod tests {
             assert_eq!(span_index, 3);
 
             // Degree 1, Derivative 0
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_1 as usize, 0, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_1, 0, &knots);
             assert_eq!(basis_ders.len(), 1);
             assert_eq!(basis_ders[0].len(), 2);
             assert!(f64_equal(basis_ders[0][0], 1.0));
             assert!(f64_equal(basis_ders[0][1], 0.0));
 
             // Degree 2, Derivative 1
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_2 as usize, 1, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_2, 1, &knots);
             assert_eq!(basis_ders.len(), 2);
             assert_eq!(basis_ders[0].len(), 3);
             assert!(f64_equal(basis_ders[0][0], 1.0));
@@ -787,8 +783,7 @@ mod tests {
             assert!(f64_equal(basis_ders[1][2], 0.0));
 
             // Degree 3, Derivitive 2
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_3 as usize, 2, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_3, 2, &knots);
             assert_eq!(basis_ders.len(), 3);
             assert_eq!(basis_ders[0].len(), 4);
             assert!(f64_equal(basis_ders[0][0], 1.0));
@@ -818,16 +813,14 @@ mod tests {
             assert_eq!(span_index, 3);
 
             // Degree 1, Derivative 0
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_1 as usize, 0, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_1, 0, &knots);
             assert_eq!(basis_ders.len(), 1);
             assert_eq!(basis_ders[0].len(), 2);
             assert!(f64_equal(basis_ders[0][0], 0.5));
             assert!(f64_equal(basis_ders[0][1], 0.5));
 
             // Degree 2, Derivative 1
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_2 as usize, 1, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_2, 1, &knots);
             assert_eq!(basis_ders.len(), 2);
             assert_eq!(basis_ders[0].len(), 3);
             assert!(f64_equal(basis_ders[0][0], 0.25));
@@ -838,8 +831,7 @@ mod tests {
             assert!(f64_equal(basis_ders[1][2], 0.5));
 
             // Degree 3, Derivitive 2
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_3 as usize, 2, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_3, 2, &knots);
             assert_eq!(basis_ders.len(), 3);
             assert_eq!(basis_ders[0].len(), 4);
             assert!(f64_equal(basis_ders[0][0], 0.125));
@@ -869,16 +861,14 @@ mod tests {
             assert_eq!(span_index, 4);
 
             // Degree 1, Derivitive 0
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_1 as usize, 0, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_1, 0, &knots);
             assert_eq!(basis_ders.len(), 1);
             assert_eq!(basis_ders[0].len(), 2);
             assert!(f64_equal(basis_ders[0][0], 1.0));
             assert!(f64_equal(basis_ders[0][1], 0.0));
 
             // Degree 2, Derivative 1
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_2 as usize, 1, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_2, 1, &knots);
             assert_eq!(basis_ders.len(), 2);
             assert_eq!(basis_ders[0].len(), 3);
             assert!(f64_equal(basis_ders[0][0], 0.5));
@@ -889,8 +879,7 @@ mod tests {
             assert!(f64_equal(basis_ders[1][2], 0.0));
 
             // Degree 3, Derivitive 2
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_3 as usize, 2, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_3, 2, &knots);
             assert_eq!(basis_ders.len(), 3);
             assert_eq!(basis_ders[0].len(), 4);
             assert!(f64_equal(basis_ders[0][0], 0.25));
@@ -920,16 +909,14 @@ mod tests {
             assert_eq!(span_index, 4);
 
             // Degree 1, Derivitive 0
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_1 as usize, 0, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_1, 0, &knots);
             assert_eq!(basis_ders.len(), 1);
             assert_eq!(basis_ders[0].len(), 2);
             assert!(f64_equal(basis_ders[0][0], 0.5));
             assert!(f64_equal(basis_ders[0][1], 0.5));
 
             // Degree 2, Derivative 1
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_2 as usize, 1, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_2, 1, &knots);
             assert_eq!(basis_ders.len(), 2);
             assert_eq!(basis_ders[0].len(), 3);
             assert!(f64_equal(basis_ders[0][0], 0.125));
@@ -940,8 +927,7 @@ mod tests {
             assert!(f64_equal(basis_ders[1][2], 0.5));
 
             // Degree 3, Derivitive 2
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_3 as usize, 2, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_3, 2, &knots);
             assert_eq!(basis_ders.len(), 3);
             assert_eq!(basis_ders[0].len(), 4);
             assert!(f64_equal(basis_ders[0][0], 0.03125));
@@ -971,16 +957,14 @@ mod tests {
             assert_eq!(span_index, 5);
 
             // Degree 1, Derivitive 0
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_1 as usize, 0, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_1, 0, &knots);
             assert_eq!(basis_ders.len(), 1);
             assert_eq!(basis_ders[0].len(), 2);
             assert!(f64_equal(basis_ders[0][0], 1.0));
             assert!(f64_equal(basis_ders[0][1], 0.0));
 
             // Degree 2, Derivative 1
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_2 as usize, 1, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_2, 1, &knots);
             assert_eq!(basis_ders.len(), 2);
             assert_eq!(basis_ders[0].len(), 3);
             assert!(f64_equal(basis_ders[0][0], 0.5));
@@ -991,8 +975,7 @@ mod tests {
             assert!(f64_equal(basis_ders[1][2], 0.0));
 
             // Degree 3, Derivitive 2
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_3 as usize, 2, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_3, 2, &knots);
             assert_eq!(basis_ders.len(), 3);
             assert_eq!(basis_ders[0].len(), 4);
             assert!(f64_equal(basis_ders[0][0], 0.16666666666666666));
@@ -1022,16 +1005,14 @@ mod tests {
             assert_eq!(span_index, 5);
 
             // Degree 1, Derivitive 0
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_1 as usize, 0, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_1, 0, &knots);
             assert_eq!(basis_ders.len(), 1);
             assert_eq!(basis_ders[0].len(), 2);
             assert!(f64_equal(basis_ders[0][0], 0.5));
             assert!(f64_equal(basis_ders[0][1], 0.5));
 
             // Degree 2, Derivative 1
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_2 as usize, 1, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_2, 1, &knots);
             assert_eq!(basis_ders.len(), 2);
             assert_eq!(basis_ders[0].len(), 3);
             assert!(f64_equal(basis_ders[0][0], 0.125));
@@ -1042,8 +1023,7 @@ mod tests {
             assert!(f64_equal(basis_ders[1][2], 1.0));
 
             // Degree 3, Derivitive 2
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_3 as usize, 2, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_3, 2, &knots);
             assert_eq!(basis_ders.len(), 3);
             assert_eq!(basis_ders[0].len(), 4);
             assert!(f64_equal(basis_ders[0][0], 0.020833333333333332));
@@ -1073,16 +1053,14 @@ mod tests {
             assert_eq!(span_index, 7);
 
             // Degree 1, Derivitive 0
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_1 as usize, 0, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_1, 0, &knots);
             assert_eq!(basis_ders.len(), 1);
             assert_eq!(basis_ders[0].len(), 2);
             assert!(f64_equal(basis_ders[0][0], 1.0));
             assert!(f64_equal(basis_ders[0][1], 0.0));
 
             // Degree 2, Derivative 1
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_2 as usize, 1, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_2, 1, &knots);
             assert_eq!(basis_ders.len(), 2);
             assert_eq!(basis_ders[0].len(), 3);
             assert!(f64_equal(basis_ders[0][0], 1.0));
@@ -1093,8 +1071,7 @@ mod tests {
             assert!(f64_equal(basis_ders[1][2], 0.0));
 
             // Degree 3, Derivitive 2
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_3 as usize, 2, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_3, 2, &knots);
             assert_eq!(basis_ders.len(), 3);
             assert_eq!(basis_ders[0].len(), 4);
             assert!(f64_equal(basis_ders[0][0], 0.5));
@@ -1110,7 +1087,7 @@ mod tests {
             assert!(f64_equal(basis_ders[2][2], 6.0));
             assert!(f64_equal(basis_ders[2][3], 0.0));
         }
-    
+
         #[test]
         fn test_ex_3_5() {
             let knots = vec![0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0];
@@ -1124,16 +1101,14 @@ mod tests {
             assert_eq!(span_index, 7);
 
             // Degree 1, Derivitive 0
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_1 as usize, 0, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_1, 0, &knots);
             assert_eq!(basis_ders.len(), 1);
             assert_eq!(basis_ders[0].len(), 2);
             assert!(f64_equal(basis_ders[0][0], 0.5));
             assert!(f64_equal(basis_ders[0][1], 0.5));
 
             // Degree 2, Derivative 1
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_2 as usize, 1, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_2, 1, &knots);
             assert_eq!(basis_ders.len(), 2);
             assert_eq!(basis_ders[0].len(), 3);
             assert!(f64_equal(basis_ders[0][0], 0.25));
@@ -1144,8 +1119,7 @@ mod tests {
             assert!(f64_equal(basis_ders[1][2], 1.0));
 
             // Degree 3, Derivitive 2
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_3 as usize, 2, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_3, 2, &knots);
             assert_eq!(basis_ders.len(), 3);
             assert_eq!(basis_ders[0].len(), 4);
             assert!(f64_equal(basis_ders[0][0], 0.0625));
@@ -1161,7 +1135,7 @@ mod tests {
             assert!(f64_equal(basis_ders[2][2], -3.0));
             assert!(f64_equal(basis_ders[2][3], 3.0));
         }
-   
+
         #[test]
         fn test_ex_4_0() {
             let knots = vec![0.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0];
@@ -1175,16 +1149,14 @@ mod tests {
             assert_eq!(span_index, 7);
 
             // Degree 1, Derivitive 0
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_1 as usize, 0, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_1, 0, &knots);
             assert_eq!(basis_ders.len(), 1);
             assert_eq!(basis_ders[0].len(), 2);
             assert!(f64_equal(basis_ders[0][0], 0.0));
             assert!(f64_equal(basis_ders[0][1], 1.0));
 
             // Degree 2, Derivative 1
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_2 as usize, 1, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_2, 1, &knots);
             assert_eq!(basis_ders.len(), 2);
             assert_eq!(basis_ders[0].len(), 3);
             assert!(f64_equal(basis_ders[0][0], 0.0));
@@ -1195,8 +1167,7 @@ mod tests {
             assert!(f64_equal(basis_ders[1][2], 2.0));
 
             // Degree 3, Derivitive 2
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree_3 as usize, 2, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree_3, 2, &knots);
             assert_eq!(basis_ders.len(), 3);
             assert_eq!(basis_ders[0].len(), 4);
             assert!(f64_equal(basis_ders[0][0], 0.0));
@@ -1212,7 +1183,7 @@ mod tests {
             assert!(f64_equal(basis_ders[2][2], -12.0));
             assert!(f64_equal(basis_ders[2][3], 6.0));
         }
-   
+
         #[test]
         fn test_min() {
             let knots = vec![0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 4.0, 5.0, 5.0, 5.0];
@@ -1221,8 +1192,7 @@ mod tests {
             let span_index = find_span_param(degree, &knots, u_value, K_TOLERANCE);
             assert_eq!(span_index, 2);
 
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree as usize, 2, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree, 2, &knots);
             assert_eq!(basis_ders.len(), 3);
             assert_eq!(basis_ders[0].len(), 3);
             assert!(f64_equal(basis_ders[0][0], 1.0));
@@ -1237,7 +1207,7 @@ mod tests {
             assert!(f64_equal(basis_ders[1][2], 0.0));
             assert!(f64_equal(basis_ders[2][2], 1.0));
         }
-   
+
         #[test]
         fn test_mid() {
             let knots = vec![0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 4.0, 5.0, 5.0, 5.0];
@@ -1249,8 +1219,7 @@ mod tests {
             let span_index = find_span_param(degree, &knots, u_value_0, K_TOLERANCE);
             assert_eq!(span_index, 4);
 
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value_0, degree as usize, 2, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value_0, degree, 2, &knots);
             assert_eq!(basis_ders.len(), 3);
             assert_eq!(basis_ders[0].len(), 3);
             assert!(f64_equal(basis_ders[0][0], 0.125));
@@ -1269,8 +1238,7 @@ mod tests {
             let span_index = find_span_param(degree, &knots, u_value_1, K_TOLERANCE);
             assert_eq!(span_index, 5);
 
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value_1, degree as usize, 2, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value_1, degree, 2, &knots);
             assert_eq!(basis_ders.len(), 3);
             assert_eq!(basis_ders[0].len(), 3);
             assert!(f64_equal(basis_ders[0][0], 0.5));
@@ -1294,8 +1262,7 @@ mod tests {
             let span_index = find_span_param(degree, &knots, u_value, K_TOLERANCE);
             assert_eq!(span_index, 7);
 
-            let basis_ders =
-                ders_basis_fun(span_index as usize, u_value, degree as usize, 2, &knots);
+            let basis_ders = ders_basis_fun(span_index, u_value, degree, 2, &knots);
             assert_eq!(basis_ders.len(), 3);
             assert_eq!(basis_ders[0].len(), 3);
             assert!(f64_equal(basis_ders[0][0], 0.0));
@@ -1314,166 +1281,187 @@ mod tests {
 
     mod single_basis {
         use crate::{
-            knot_utility_functions::{ders_basis_fun, find_span_param},
+            knot_utility_functions::{basis_fun, find_span_param, one_basis_fun},
             utility::f64_equal,
         };
         static K_TOLERANCE: f64 = core::f64::EPSILON;
 
         #[test]
-        fn test_runs() {
-            assert!(true)
+        fn test_min() {
+            let u_val = 0.0;
+            let degree = 2;
+            let knots = vec![0.0, 0.0, 0.0, 1.0, 2.0, 2.0, 2.0];
+            let span_index = find_span_param(degree, &knots, u_val, K_TOLERANCE);
+            let bases = basis_fun(span_index, u_val, degree, &knots, K_TOLERANCE);
+
+            let basis = one_basis_fun(degree, &knots, 0, u_val);
+            assert!(f64_equal(bases[0], basis));
+
+            let basis = one_basis_fun(degree, &knots, 1, u_val);
+            assert!(f64_equal(bases[1], basis));
+
+            let basis = one_basis_fun(degree, &knots, 2, u_val);
+            assert!(f64_equal(bases[2], basis));
         }
 
+        #[test]
+        fn test_mid() {
+            let u_val_0 = 1.0;
+            let u_val_1 = 1.5;
+            let degree = 2;
+            let knots = vec![0.0, 0.0, 0.0, 1.0, 2.0, 2.0, 2.0];
+            let span_index = find_span_param(degree, &knots, u_val_0, K_TOLERANCE);
+            let bases = basis_fun(span_index, u_val_0, degree, &knots, K_TOLERANCE);
+
+            let basis = one_basis_fun(degree, &knots, 1, u_val_0);
+            assert!(f64_equal(bases[0], basis));
+
+            let basis = one_basis_fun(degree, &knots, 2, u_val_0);
+            assert!(f64_equal(bases[1], basis));
+
+            let basis = one_basis_fun(degree, &knots, 3, u_val_0);
+            assert!(f64_equal(bases[2], basis));
+
+            let span_index = find_span_param(degree, &knots, u_val_1, K_TOLERANCE);
+            let bases = basis_fun(span_index, u_val_1, degree, &knots, K_TOLERANCE);
+
+            let basis = one_basis_fun(degree, &knots, 1, u_val_1);
+            assert!(f64_equal(bases[0], basis));
+
+            let basis = one_basis_fun(degree, &knots, 2, u_val_1);
+            assert!(f64_equal(bases[1], basis));
+
+            let basis = one_basis_fun(degree, &knots, 3, u_val_1);
+            assert!(f64_equal(bases[2], basis));
+        }
+
+        #[test]
+        fn test_max() {
+            let u_val_0 = 2.0;
+            let u_val_1 = 2.5;
+            let degree = 2;
+            let knots = vec![0.0, 0.0, 0.0, 1.0, 2.0, 2.0, 2.0];
+            let span_index = find_span_param(degree, &knots, u_val_0, K_TOLERANCE);
+            let bases = basis_fun(span_index, u_val_0, degree, &knots, K_TOLERANCE);
+
+            let basis = one_basis_fun(degree, &knots, 1, u_val_0);
+            assert!(f64_equal(bases[0], basis));
+
+            let basis = one_basis_fun(degree, &knots, 2, u_val_0);
+            assert!(f64_equal(bases[1], basis));
+
+            let basis = one_basis_fun(degree, &knots, 3, u_val_0);
+            assert!(f64_equal(bases[2], basis));
+
+            let span_index = find_span_param(degree, &knots, u_val_1, K_TOLERANCE);
+            let bases = basis_fun(span_index, u_val_1, degree, &knots, K_TOLERANCE);
+
+            let basis = one_basis_fun(degree, &knots, 1, u_val_1);
+            assert!(f64_equal(bases[0], basis));
+
+            let basis = one_basis_fun(degree, &knots, 2, u_val_1);
+            assert!(f64_equal(bases[1], basis));
+
+            let basis = one_basis_fun(degree, &knots, 3, u_val_1);
+            assert!(f64_equal(bases[2], basis));
+        }
+    }
+
+    mod single_basis_derivative {
+        use crate::{
+            knot_utility_functions::{ders_basis_fun, ders_one_basis_fun, find_span_param},
+            utility::f64_equal,
+        };
+        static K_TOLERANCE: f64 = core::f64::EPSILON;
+
+        #[test]
+        fn test_min() {
+            let u_val = 0.0;
+            let degree = 2;
+            let knots: Vec<f64> = vec![0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 4.0, 5.0, 5.0, 5.0];
+            let span_index = find_span_param(degree, &knots, u_val, K_TOLERANCE);
+            assert_eq!(span_index, 2);
+
+            let bases_der: Vec<Vec<f64>> = ders_basis_fun(span_index, u_val, degree, 2, &knots);
+            let bases: Vec<f64> = ders_one_basis_fun(degree, &knots, span_index, u_val, 2);
+
+            assert!(f64_equal(bases_der[0][2], bases[0]));
+            assert!(f64_equal(bases_der[1][2], bases[1]));
+            assert!(f64_equal(bases_der[2][2], bases[2]));
+        }
+
+        #[test]
+        fn test_mid() {
+            let u_val_0 = 2.5;
+            let u_val_1 = 3.0;
+            let degree = 2;
+            let knots: Vec<f64> = vec![0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 4.0, 5.0, 5.0, 5.0];
+            let span_index = find_span_param(degree, &knots, u_val_0, K_TOLERANCE);
+            assert_eq!(span_index, 4);
+
+            let bases_der: Vec<Vec<f64>> = ders_basis_fun(span_index, u_val_0, degree, 2, &knots);
+            let bases: Vec<f64> = ders_one_basis_fun(degree, &knots, span_index, u_val_0, 2);
+
+            assert!(f64_equal(bases_der[0][2], bases[0]));
+            assert!(f64_equal(bases_der[1][2], bases[1]));
+            assert!(f64_equal(bases_der[2][2], bases[2]));
+
+            let span_index = find_span_param(degree, &knots, u_val_1, K_TOLERANCE);
+            assert_eq!(span_index, 5);
+            let bases_der: Vec<Vec<f64>> = ders_basis_fun(span_index, u_val_1, degree, 2, &knots);
+            let bases: Vec<f64> = ders_one_basis_fun(degree, &knots, span_index, u_val_1, 2);
+
+            assert!(f64_equal(bases_der[0][2], bases[0]));
+            assert!(f64_equal(bases_der[1][2], bases[1]));
+            assert!(f64_equal(bases_der[2][2], bases[2]));
+        }
+
+        #[test]
+        // Disabling because the algorithms provided for these 2 methods disagree on the
+        // output for the max derivative
+        #[ignore]
+        fn test_max() {
+            let u_val_0 = 4.9;
+            let u_val_1 = 5.0;
+            let degree = 2;
+            let knots: Vec<f64> = vec![0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0, 4.0, 5.0, 5.0, 5.0];
+            let span_index = find_span_param(degree, &knots, u_val_0, K_TOLERANCE);
+            assert_eq!(span_index, 7);
+
+            let bases_der: Vec<Vec<f64>> = ders_basis_fun(span_index, u_val_0, degree, 2, &knots);
+            let bases: Vec<f64> = ders_one_basis_fun(degree, &knots, span_index, u_val_0, 2);
+
+            assert!(f64_equal(bases_der[0][2], bases[0]));
+            assert!(f64_equal(bases_der[1][2], bases[1]));
+            assert!(f64_equal(bases_der[2][2], bases[2]));
+
+            let span_index = find_span_param(degree, &knots, u_val_1, K_TOLERANCE);
+            assert_eq!(span_index, 7);
+            let bases_der: Vec<Vec<f64>> = ders_basis_fun(span_index, u_val_1, degree, 2, &knots);
+            let bases: Vec<f64> = ders_one_basis_fun(degree, &knots, span_index, u_val_1, 2);
+
+            assert!(
+                f64_equal(bases_der[0][2], bases[0]),
+                "Actual {} vs {}",
+                bases_der[0][2],
+                bases[0]
+            );
+            assert!(
+                f64_equal(bases_der[1][2], bases[1]),
+                "Actual {} vs {}",
+                bases_der[1][2],
+                bases[1]
+            );
+            assert!(
+                f64_equal(bases_der[2][2], bases[2]),
+                "Actual {} vs {}",
+                bases_der[2][2],
+                bases[2]
+            );
+        }
     }
 }
 
 /*
 
-// Test the single function against the multi function
-TEST(NURBS_Chapter2, SingleBasisMin) {
-  constexpr double u_value = 0.0;
-  constexpr uint32_t degree = 2;
-  const std::vector<double> knots = {0, 0, 0, 1, 2, 2, 2};
-  const uint32_t span_index = FindSpanParam(degree, knots, u_value, kTolerance);
-  const std::vector<double> bases =
-      BasisFuns(span_index, u_value, degree, knots, kTolerance);
-
-  double basis = OneBasisFun(degree, knots, 0, u_value);
-  EXPECT_DOUBLE_EQ(bases[0], basis);
-
-  basis = OneBasisFun(degree, knots, 1, u_value);
-  EXPECT_DOUBLE_EQ(bases[1], basis);
-
-  basis = OneBasisFun(degree, knots, 2, u_value);
-  EXPECT_DOUBLE_EQ(bases[2], basis);
-}
-
-TEST(NURBS_Chapter2, SingleBasisMid) {
-  constexpr double u_value_0 = 1.0;
-  constexpr double u_value_1 = 1.5;
-  constexpr uint32_t degree = 2;
-  const std::vector<double> knots = {0, 0, 0, 1, 2, 2, 2};
-
-  uint32_t span_index = FindSpanParam(degree, knots, u_value_0, kTolerance);
-  std::vector<double> bases =
-      BasisFuns(span_index, u_value_0, degree, knots, kTolerance);
-  double basis = OneBasisFun(degree, knots, 1, u_value_0);
-  EXPECT_DOUBLE_EQ(bases[0], basis);
-  basis = OneBasisFun(degree, knots, 2, u_value_0);
-  EXPECT_DOUBLE_EQ(bases[1], basis);
-  basis = OneBasisFun(degree, knots, 3, u_value_0);
-  EXPECT_DOUBLE_EQ(bases[2], basis);
-
-  span_index = FindSpanParam(degree, knots, u_value_1, kTolerance);
-  bases = BasisFuns(span_index, u_value_1, degree, knots, kTolerance);
-  basis = OneBasisFun(degree, knots, 1, u_value_1);
-  EXPECT_DOUBLE_EQ(bases[0], basis);
-  basis = OneBasisFun(degree, knots, 2, u_value_1);
-  EXPECT_DOUBLE_EQ(bases[1], basis);
-  basis = OneBasisFun(degree, knots, 3, u_value_1);
-  EXPECT_DOUBLE_EQ(bases[2], basis);
-}
-
-TEST(NURBS_Chapter2, SingleBasisMax) {
-  constexpr double u_value_0 = 2.0;
-  constexpr double u_value_1 = 2.5;
-  constexpr uint32_t degree = 2;
-  const std::vector<double> knots = {0, 0, 0, 1, 2, 2, 2};
-  uint32_t span_index = FindSpanParam(degree, knots, u_value_0, kTolerance);
-  std::vector<double> bases =
-      BasisFuns(span_index, u_value_0, degree, knots, kTolerance);
-  double basis = OneBasisFun(degree, knots, 1, u_value_0);
-  EXPECT_DOUBLE_EQ(bases[0], basis);
-  basis = OneBasisFun(degree, knots, 2, u_value_0);
-  EXPECT_DOUBLE_EQ(bases[1], basis);
-  basis = OneBasisFun(degree, knots, 3, u_value_0);
-  EXPECT_DOUBLE_EQ(bases[2], basis);
-
-  span_index = FindSpanParam(degree, knots, u_value_1, kTolerance);
-  bases = BasisFuns(span_index, u_value_1, degree, knots, kTolerance);
-  basis = OneBasisFun(degree, knots, 1, u_value_1);
-  EXPECT_DOUBLE_EQ(bases[0], basis);
-  basis = OneBasisFun(degree, knots, 2, u_value_1);
-  EXPECT_DOUBLE_EQ(bases[1], basis);
-  basis = OneBasisFun(degree, knots, 3, u_value_1);
-  EXPECT_DOUBLE_EQ(bases[2], basis);
-}
-
-
-
-// TODO - Test the single function against the multi function
-TEST(NURBS_Chapter2, SingleBasisDerivativeMin) {
-  constexpr double u_value = 0.0;
-  const std::vector<double> knots = {0, 0, 0, 1, 2, 3, 4, 4, 5, 5, 5};
-  constexpr uint32_t degree = 2;
-  uint32_t span_index = FindSpanParam(degree, knots, u_value, kTolerance);
-  EXPECT_EQ(span_index, 2);
-  std::vector<std::vector<double>> bases_der =
-      DersBasisFuns(span_index, u_value, degree, 2, knots);
-
-  std::vector<double> bases =
-      DersOneBasisFun(degree, knots, span_index, u_value, 2);
-
-  EXPECT_DOUBLE_EQ(bases_der[0][2], bases[0]);
-  EXPECT_DOUBLE_EQ(bases_der[1][2], bases[1]);
-  EXPECT_DOUBLE_EQ(bases_der[2][2], bases[2]);
-}
-
-TEST(NURBS_Chapter2, SingleBasisDerivativeMid) {
-  constexpr double u_value_0 = 2.5;
-  constexpr double u_value_1 = 3.0;
-  const std::vector<double> knots = {0, 0, 0, 1, 2, 3, 4, 4, 5, 5, 5};
-  constexpr uint32_t degree = 2;
-  uint32_t span_index = FindSpanParam(degree, knots, u_value_0, kTolerance);
-  EXPECT_EQ(span_index, 4);
-  std::vector<std::vector<double>> bases_der =
-      DersBasisFuns(span_index, u_value_0, degree, 2, knots);
-
-  std::vector<double> bases =
-      DersOneBasisFun(degree, knots, span_index, u_value_0, 2);
-
-  EXPECT_DOUBLE_EQ(bases_der[0][2], bases[0]);
-  EXPECT_DOUBLE_EQ(bases_der[1][2], bases[1]);
-  EXPECT_DOUBLE_EQ(bases_der[2][2], bases[2]);
-
-  span_index = FindSpanParam(degree, knots, u_value_1, kTolerance);
-  EXPECT_EQ(span_index, 5);
-  bases_der = DersBasisFuns(span_index, u_value_1, degree, 2, knots);
-
-  bases = DersOneBasisFun(degree, knots, span_index, u_value_1, 2);
-
-  EXPECT_DOUBLE_EQ(bases_der[0][2], bases[0]);
-  EXPECT_DOUBLE_EQ(bases_der[1][2], bases[1]);
-  EXPECT_DOUBLE_EQ(bases_der[2][2], bases[2]);
-}
-
-// Disabling because the algorithms provided for these 2 methods disagree on the
-// output for the max derivative
-TEST(NURBS_Chapter2, DISABLED_SingleBasisDerivativeMax) {
-  constexpr double u_value_0 = 4.9;
-  constexpr double u_value_1 = 5.0;
-  const std::vector<double> knots = {0, 0, 0, 1, 2, 3, 4, 4, 5, 5, 5};
-  constexpr uint32_t degree = 2;
-  uint32_t span_index = FindSpanParam(degree, knots, u_value_0, kTolerance);
-  EXPECT_EQ(span_index, 7);
-  std::vector<std::vector<double>> bases_der =
-      DersBasisFuns(span_index, u_value_0, degree, 2, knots);
-
-  std::vector<double> bases =
-      DersOneBasisFun(degree, knots, span_index, u_value_0, 2);
-
-  EXPECT_DOUBLE_EQ(bases_der[0][2], bases[0]);
-  EXPECT_DOUBLE_EQ(bases_der[1][2], bases[1]);
-  EXPECT_DOUBLE_EQ(bases_der[2][2], bases[2]);
-
-  span_index = FindSpanParam(degree, knots, u_value_1, kTolerance);
-  EXPECT_EQ(span_index, 7);
-  bases_der = DersBasisFuns(span_index, u_value_1, degree, 2, knots);
-
-  bases = DersOneBasisFun(degree, knots, span_index, u_value_1, 2);
-
-  EXPECT_DOUBLE_EQ(bases_der[2][0], bases[0]);
-  EXPECT_DOUBLE_EQ(bases_der[2][1], bases[1]);
-  EXPECT_DOUBLE_EQ(bases_der[2][2], bases[2]);
-}
 */
