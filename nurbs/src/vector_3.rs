@@ -1,4 +1,5 @@
 use core::ops;
+use crate::point_types::Point3D;
 use crate::utility::random_f64_range;
 use std::f64::consts::PI;
 
@@ -12,6 +13,10 @@ pub struct Vec3 {
 impl Vec3 {
     pub fn new(x: f64, y: f64, z: f64) -> Vec3 {
         Vec3 { x, y, z }
+    }
+
+    pub fn from_point(point: Point3D) -> Vec3 {
+        Vec3{x: point.x(), y: point.y(), z: point.z()}
     }
 
     pub fn empty() -> Vec3 {
@@ -483,11 +488,21 @@ impl<'a> ops::Div<&'a Vec3> for f64 {
 
 #[cfg(test)]
 mod tests {
+    use crate::point_types::Point3D;
     use crate::vector_3::Vec3;
 
     #[test]
     fn test_new() {
         let vec = Vec3::new(1.0, 2.0, 3.0);
+        assert_eq!(vec.x, 1.0);
+        assert_eq!(vec.y, 2.0);
+        assert_eq!(vec.z, 3.0);
+    }
+
+    #[test]
+    fn test_point() {
+        let point = Point3D::new([1.0, 2.0, 3.0]);
+        let vec = Vec3::from_point(point);
         assert_eq!(vec.x, 1.0);
         assert_eq!(vec.y, 2.0);
         assert_eq!(vec.z, 3.0);

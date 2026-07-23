@@ -65,6 +65,10 @@ impl<const N: usize> BezierCurveND<N> {
         }
     }
 
+    pub fn points(&self) -> &Vec<Point<N>> {
+        &self.control_points
+    }
+
     pub fn from_points(control_points: Vec<Point<N>>) -> BezierCurveND<N> {
         BezierCurveND::new(control_points, Interval::new(Point2D::new([0.0, 1.0])))
     }

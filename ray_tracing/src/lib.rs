@@ -1,5 +1,6 @@
 pub mod aabb;
 pub mod affine_transforms;
+pub mod bezier_patch;
 pub mod bvh_node;
 pub mod camera;
 pub mod checker_texture;

@@ -8,7 +8,7 @@ fn main() {
         let depth = 50;
         let show = true;
         let save = true;
-        let input = 11;
+        let input = 12;
         println!("Input: {}", &input);
         match input {
             1 => final_render_book1(width, samples, depth, show, save),
@@ -22,6 +22,7 @@ fn main() {
             9 => final_scene_book2(width, samples, depth, show, save),
             10 => cornell_box_metal(width, samples, depth, show, save),
             11 => cornell_box_glass_sphere(width, samples, depth, show, save),
+            12 => utah_teapot(width, samples, depth, show, save),
             _ => final_scene_book2(width, samples, depth, show, save),
         };
     } else {
@@ -43,6 +44,7 @@ fn main() {
                 9 => final_scene_book2(width, samples, depth, show, save),
                 10 => cornell_box_metal(width, samples, depth, show, save),
                 11 => cornell_box_glass_sphere(width, samples, depth, show, save),
+                12 => utah_teapot(width, samples, depth, show, save),
                 _ => println!("Bad index in full loop: {}", index),
             };
         }

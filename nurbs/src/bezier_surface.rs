@@ -1,4 +1,5 @@
 use crate::bezier_curve::BezierCurve3D;
+use crate::bezier_curve::all_bernstein;
 use crate::curve::Curve3D;
 use crate::interval::Interval;
 use crate::point_types::Point2D;
@@ -56,6 +57,43 @@ impl BezierSurface {
 
     pub fn get_curves(&self) -> &Vec<BezierCurve3D> {
         &self.curves
+    }
+
+    pub fn partial_derivative_u(&self, uv: Point2D) -> Point3D {
+        let m = self.curves[0].points().len() - 1;
+        let n = self.curves.len() - 1;
+
+        let u_bern = all_bernstein(m - 1, uv.u());
+        let v_bern = all_bernstein(n, uv.v());
+
+        let mut sum = Point3D::empty();
+        for j in 0..(n + 1) {
+            let curve = &self.curves[j];
+            for i in 0..m {
+                sum += (curve.points()[i + 1] - curve.points()[i]) * u_bern[i] * v_bern[j];
+            }
+        }
+
+        m as f64 * sum
+    }
+
+    pub fn partial_derivative_v(&self, uv: Point2D) -> Point3D {
+        let m = self.curves[0].points().len() - 1;
+        let n = self.curves.len() - 1;
+
+        let u_bern = all_bernstein(m, uv.u());
+        let v_bern = all_bernstein(n - 1, uv.v());
+
+        let mut sum = Point3D::empty();
+        for j in 0..n {
+            let curve_0 = &self.curves[j];
+            let curve_1 = &self.curves[j + 1];
+            for i in 0..(m + 1) {
+                sum += (curve_1.points()[i] - curve_0.points()[i]) * u_bern[i] * v_bern[j];
+            }
+        }
+
+        n as f64 * sum
     }
 }
 
