@@ -5,7 +5,7 @@ fn main() {
     if run_single {
         let width = 800;
         let samples = 10;
-        let depth = 50;
+        let depth = 10;
         let show = true;
         let save = true;
         let input = 12;

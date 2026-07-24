@@ -31,9 +31,7 @@ impl Hittable for Quad {
             if time.contains(hit_time) {
                 let intersection = ray_in.at(hit_time);
 
-                let hitpt_vector = intersection - self.origin;
-                let alpha = self.w.dot(&hitpt_vector.cross(&self.v));
-                let beta = self.w.dot(&self.u.cross(&hitpt_vector));
+                let [alpha, beta] = self.uv(intersection);
 
                 if Quad::interior(alpha, beta, hit_record) {
                     hit_record.time = hit_time;
@@ -95,7 +93,7 @@ impl Quad {
         }
     }
 
-    fn interior(a: f64, b: f64, hit_record: &mut HitRecord) -> bool {
+    pub fn interior(a: f64, b: f64, hit_record: &mut HitRecord) -> bool {
         if a < 0.0 || 1.0 < a || b < 0.0 || 1.0 < b {
             false
         } else {
@@ -103,6 +101,13 @@ impl Quad {
             hit_record.v = b;
             true
         }
+    }
+
+    pub fn uv(&self, point: Vec3) -> [f64; 2] {
+        let hitpt_vector = point - self.origin;
+        let alpha = self.w.dot(&hitpt_vector.cross(&self.v));
+        let beta = self.w.dot(&self.u.cross(&hitpt_vector));
+        [alpha, beta]
     }
 }
 

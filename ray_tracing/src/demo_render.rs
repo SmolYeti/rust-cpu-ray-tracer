@@ -1001,69 +1001,836 @@ pub fn cornell_box_glass_sphere(width: i32, samples: i32, depth: i32, show: bool
 }
 
 pub fn utah_teapot(width: i32, samples: i32, depth: i32, show: bool, save: bool) {
+    // Model from https://users.cs.utah.edu/~dejohnso/models/teapot.html
+
     // World
     let mut build_world = HittableList::new();
 
     let mat = Arc::new(Lambertian::from_color(Vec3::new(0.5, 0.5, 0.5)));
     // Teapot
-    build_world.add(Arc::new(BezierPatch::new(
-        BezierSurface::from_curves(vec![
-            BezierCurve3D::from_points(vec![
-                Point3D::new([1.4, 2.25, 0.0]),
-                Point3D::new([1.3375, 2.38125, 0.0]),
-                Point3D::new([1.4375, 2.38125, 0.0]),
-                Point3D::new([1.5, 2.25, 0.0]),
+    /*
+    #
+    # teapot: this is the original non-rational bezier teapot data. the data
+    #         comes from Martin Newel and Jim Blinn.
+    #
+    # Thomas V Thompson II
+    # January 28 2000
+    #
+    */
+    {
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.4000, 2.25000, 0.0]),
+                    Point3D::new([1.3375, 2.38125, 0.0]),
+                    Point3D::new([1.4375, 2.38125, 0.0]),
+                    Point3D::new([1.5000, 2.25000, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.4000, 2.25000, 0.784]),
+                    Point3D::new([1.3375, 2.38125, 0.789]),
+                    Point3D::new([1.4375, 2.38125, 0.805]),
+                    Point3D::new([1.5000, 2.25000, 0.840]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.784, 2.25000, 1.4000]),
+                    Point3D::new([0.749, 2.38125, 1.3375]),
+                    Point3D::new([0.805, 2.38125, 1.4375]),
+                    Point3D::new([0.840, 2.25000, 1.5000]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 2.25000, 1.4000]),
+                    Point3D::new([0.0, 2.38125, 1.3375]),
+                    Point3D::new([0.0, 2.38125, 1.4375]),
+                    Point3D::new([0.0, 2.25000, 1.5000]),
+                ]),
             ]),
-            BezierCurve3D::from_points(vec![
-                Point3D::new([1.4, 2.25, 0.784]),
-                Point3D::new([1.3375, 2.38125, 0.789]),
-                Point3D::new([1.4375, 2.38125, 0.805]),
-                Point3D::new([1.5, 2.25, 0.84]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 2.25000, 1.4000]),
+                    Point3D::new([0.0, 2.38125, 1.3375]),
+                    Point3D::new([0.0, 2.38125, 1.4375]),
+                    Point3D::new([0.0, 2.25000, 1.5000]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-0.784, 2.25000, 1.4000]),
+                    Point3D::new([-0.749, 2.38125, 1.3375]),
+                    Point3D::new([-0.805, 2.38125, 1.4375]),
+                    Point3D::new([-0.840, 2.25000, 1.5000]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.4000, 2.25000, 0.784]),
+                    Point3D::new([-1.3375, 2.38125, 0.749]),
+                    Point3D::new([-1.4375, 2.38125, 0.805]),
+                    Point3D::new([-1.5000, 2.25000, 0.840]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.4000, 2.25000, 0.0]),
+                    Point3D::new([-1.3375, 2.38125, 0.0]),
+                    Point3D::new([-1.4375, 2.38125, 0.0]),
+                    Point3D::new([-1.5000, 2.25000, 0.0]),
+                ]),
             ]),
-            BezierCurve3D::from_points(vec![
-                Point3D::new([0.784, 2.25, 1.4]),
-                Point3D::new([0.749, 2.38125, 1.3375]),
-                Point3D::new([0.805, 2.38125, 1.4375]),
-                Point3D::new([0.84, 2.25, 1.5]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.4000, 2.25000, 0.0]),
+                    Point3D::new([-1.3375, 2.38125, 0.0]),
+                    Point3D::new([-1.4375, 2.38125, 0.0]),
+                    Point3D::new([-1.5000, 2.25000, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.4000, 2.25000, -0.784]),
+                    Point3D::new([-1.3375, 2.38125, -0.749]),
+                    Point3D::new([-1.4375, 2.38125, -0.805]),
+                    Point3D::new([-1.5000, 2.25000, -0.840]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-0.784, 2.25000, -1.4000]),
+                    Point3D::new([-0.749, 2.38125, -1.3375]),
+                    Point3D::new([-0.805, 2.38125, -1.4375]),
+                    Point3D::new([-0.840, 2.25000, -1.5000]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 2.25000, -1.4000]),
+                    Point3D::new([0.0, 2.38125, -1.3375]),
+                    Point3D::new([0.0, 2.38125, -1.4375]),
+                    Point3D::new([0.0, 2.25000, -1.5000]),
+                ]),
             ]),
-            BezierCurve3D::from_points(vec![
-                Point3D::new([0.0, 2.25, 1.4]),
-                Point3D::new([0.0, 2.38125, 1.3375]),
-                Point3D::new([0.0, 2.38125, 1.4375]),
-                Point3D::new([0.0, 2.25, 1.5]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 2.25000, -1.4000]),
+                    Point3D::new([0.0, 2.38125, -1.3375]),
+                    Point3D::new([0.0, 2.38125, -1.4375]),
+                    Point3D::new([0.0, 2.25000, -1.5000]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.784, 2.25000, -1.4000]),
+                    Point3D::new([0.749, 2.38125, -1.3375]),
+                    Point3D::new([0.805, 2.38125, -1.4375]),
+                    Point3D::new([0.840, 2.25000, -1.5000]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.4000, 2.25000, -0.784]),
+                    Point3D::new([1.3375, 2.38125, -0.749]),
+                    Point3D::new([1.4375, 2.38125, -0.805]),
+                    Point3D::new([1.5000, 2.25000, -0.840]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.4000, 2.25000, 0.0]),
+                    Point3D::new([1.3375, 2.38125, 0.0]),
+                    Point3D::new([1.4375, 2.38125, 0.0]),
+                    Point3D::new([1.5000, 2.25000, 0.0]),
+                ]),
             ]),
-        ]),
-        mat.clone(),
-    )));
-    build_world.add(Arc::new(BezierPatch::new(
-        BezierSurface::from_curves(vec![
-            BezierCurve3D::from_points(vec![
-                Point3D::new([0.0, 2.25, 1.4]),
-                Point3D::new([0.0, 2.38125, 1.3375]),
-                Point3D::new([0.0, 2.38125, 1.4375]),
-                Point3D::new([0.0, 2.25, 1.5]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.50, 2.250, 0.0]),
+                    Point3D::new([1.75, 1.725, 0.0]),
+                    Point3D::new([2.00, 1.200, 0.0]),
+                    Point3D::new([2.00, 0.750, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.50, 2.250, 0.84]),
+                    Point3D::new([1.75, 1.725, 0.98]),
+                    Point3D::new([2.00, 1.200, 1.12]),
+                    Point3D::new([2.00, 0.750, 1.12]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.84, 2.250, 1.50]),
+                    Point3D::new([0.98, 1.725, 1.75]),
+                    Point3D::new([1.12, 1.200, 2.00]),
+                    Point3D::new([1.12, 0.750, 2.00]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 2.250, 1.50]),
+                    Point3D::new([0.0, 1.725, 1.75]),
+                    Point3D::new([0.0, 1.200, 2.00]),
+                    Point3D::new([0.0, 0.750, 2.00]),
+                ]),
             ]),
-            BezierCurve3D::from_points(vec![
-                Point3D::new([-0.784, 2.25, 1.4]),
-                Point3D::new([-0.749, 2.38125, 1.3375]),
-                Point3D::new([-0.805, 2.38125, 1.4375]),
-                Point3D::new([-0.84, 2.25, 1.5]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 2.250, 1.50]),
+                    Point3D::new([0.0, 1.725, 1.75]),
+                    Point3D::new([0.0, 1.200, 2.00]),
+                    Point3D::new([0.0, 0.750, 2.00]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-0.84, 2.250, 1.50]),
+                    Point3D::new([-0.98, 1.725, 1.75]),
+                    Point3D::new([-1.12, 1.200, 2.00]),
+                    Point3D::new([-1.12, 0.750, 2.00]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.50, 2.250, 0.84]),
+                    Point3D::new([-1.75, 1.725, 0.98]),
+                    Point3D::new([-2.00, 1.200, 1.12]),
+                    Point3D::new([-2.00, 0.750, 1.12]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.50, 2.250, 0.0]),
+                    Point3D::new([-1.75, 1.725, 0.0]),
+                    Point3D::new([-2.00, 1.200, 0.0]),
+                    Point3D::new([-2.00, 0.750, 0.0]),
+                ]),
             ]),
-            BezierCurve3D::from_points(vec![
-                Point3D::new([-1.4, 2.25, 0.784]),
-                Point3D::new([-1.3375, 2.38125, 0.749]),
-                Point3D::new([-1.4375, 2.38125, 0.805]),
-                Point3D::new([-1.5, 2.25, 0.84]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.50, 2.250, 0.0]),
+                    Point3D::new([-1.75, 1.725, 0.0]),
+                    Point3D::new([-2.00, 1.200, 0.0]),
+                    Point3D::new([-2.00, 0.750, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.50, 2.250, -0.84]),
+                    Point3D::new([-1.75, 1.725, -0.98]),
+                    Point3D::new([-2.00, 1.200, -1.12]),
+                    Point3D::new([-2.00, 0.750, -1.12]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-0.84, 2.250, -1.50]),
+                    Point3D::new([-0.98, 1.725, -1.75]),
+                    Point3D::new([-1.12, 1.200, -2.00]),
+                    Point3D::new([-1.12, 0.750, -2.00]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 2.250, -1.50]),
+                    Point3D::new([0.0, 1.725, -1.75]),
+                    Point3D::new([0.0, 1.200, -2.00]),
+                    Point3D::new([0.0, 0.750, -2.00]),
+                ]),
             ]),
-            BezierCurve3D::from_points(vec![
-                Point3D::new([-1.4, 2.25, 0.0]),
-                Point3D::new([-1.3375, 2.38125, 0.0]),
-                Point3D::new([-1.4375, 2.38125, 0.0]),
-                Point3D::new([-1.5, 2.25, 0.0]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 2.250, -1.50]),
+                    Point3D::new([0.0, 1.725, -1.75]),
+                    Point3D::new([0.0, 1.200, -2.00]),
+                    Point3D::new([0.0, 0.750, -2.00]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.84, 2.250, -1.50]),
+                    Point3D::new([0.98, 1.725, -1.75]),
+                    Point3D::new([1.12, 1.200, -2.00]),
+                    Point3D::new([1.12, 0.750, -2.00]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.50, 2.250, -0.84]),
+                    Point3D::new([1.75, 1.725, -0.98]),
+                    Point3D::new([2.00, 1.200, -1.12]),
+                    Point3D::new([2.00, 0.750, -1.12]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.50, 2.250, 0.0]),
+                    Point3D::new([1.75, 1.725, 0.0]),
+                    Point3D::new([2.00, 1.200, 0.0]),
+                    Point3D::new([2.00, 0.750, 0.0]),
+                ]),
             ]),
-        ]),
-        mat.clone(),
-    )));
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([2.0, 0.750, 0.0]),
+                    Point3D::new([2.0, 0.300, 0.0]),
+                    Point3D::new([1.5, 0.075, 0.0]),
+                    Point3D::new([1.5, 0.000, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([2.0, 0.750, 1.12]),
+                    Point3D::new([2.0, 0.300, 1.12]),
+                    Point3D::new([1.5, 0.075, 0.84]),
+                    Point3D::new([1.5, 0.000, 0.84]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.12, 0.750, 2.0]),
+                    Point3D::new([1.12, 0.300, 2.0]),
+                    Point3D::new([0.84, 0.075, 1.5]),
+                    Point3D::new([0.84, 0.000, 1.5]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 0.750, 2.0]),
+                    Point3D::new([0.0, 0.300, 2.0]),
+                    Point3D::new([0.0, 0.075, 1.5]),
+                    Point3D::new([0.0, 0.000, 1.5]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 0.750, 2.0]),
+                    Point3D::new([0.0, 0.300, 2.0]),
+                    Point3D::new([0.0, 0.075, 1.5]),
+                    Point3D::new([0.0, 0.000, 1.5]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.12, 0.750, 2.0]),
+                    Point3D::new([-1.12, 0.300, 2.0]),
+                    Point3D::new([-0.84, 0.075, 1.5]),
+                    Point3D::new([-0.84, 0.000, 1.5]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-2.0, 0.750, 1.12]),
+                    Point3D::new([-2.0, 0.300, 1.12]),
+                    Point3D::new([-1.5, 0.075, 0.84]),
+                    Point3D::new([-1.5, 0.000, 0.84]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-2.0, 0.750, 0.0]),
+                    Point3D::new([-2.0, 0.300, 0.0]),
+                    Point3D::new([-1.5, 0.075, 0.0]),
+                    Point3D::new([-1.5, 0.000, 0.0]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-2.0, 0.750, 0.0]),
+                    Point3D::new([-2.0, 0.300, 0.0]),
+                    Point3D::new([-1.5, 0.075, 0.0]),
+                    Point3D::new([-1.5, 0.000, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-2.0, 0.750, -1.12]),
+                    Point3D::new([-2.0, 0.300, -1.12]),
+                    Point3D::new([-1.5, 0.075, -0.84]),
+                    Point3D::new([-1.5, 0.000, -0.84]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.12, 0.750, -2.0]),
+                    Point3D::new([-1.12, 0.300, -2.0]),
+                    Point3D::new([-0.84, 0.075, -1.5]),
+                    Point3D::new([-0.84, 0.000, -1.5]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 0.750, -2.0]),
+                    Point3D::new([0.0, 0.300, -2.0]),
+                    Point3D::new([0.0, 0.075, -1.5]),
+                    Point3D::new([0.0, 0.000, -1.5]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 0.750, -2.0]),
+                    Point3D::new([0.0, 0.300, -2.0]),
+                    Point3D::new([0.0, 0.075, -1.5]),
+                    Point3D::new([0.0, 0.000, -1.5]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.12, 0.750, -2.0]),
+                    Point3D::new([1.12, 0.300, -2.0]),
+                    Point3D::new([0.84, 0.075, -1.5]),
+                    Point3D::new([0.84, 0.000, -1.5]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([2.0, 0.750, -1.12]),
+                    Point3D::new([2.0, 0.300, -1.12]),
+                    Point3D::new([1.5, 0.075, -0.84]),
+                    Point3D::new([1.5, 0.000, -0.84]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([2.0, 0.750, 0.0]),
+                    Point3D::new([2.0, 0.300, 0.0]),
+                    Point3D::new([1.5, 0.075, 0.0]),
+                    Point3D::new([1.5, 0.000, 0.0]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.6, 1.875, 0.0]),
+                    Point3D::new([-2.3, 1.875, 0.0]),
+                    Point3D::new([-2.7, 1.875, 0.0]),
+                    Point3D::new([-2.7, 1.650, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.6, 1.875, 0.3]),
+                    Point3D::new([-2.3, 1.875, 0.3]),
+                    Point3D::new([-2.7, 1.875, 0.3]),
+                    Point3D::new([-2.7, 1.650, 0.3]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.5, 2.10, 0.3]),
+                    Point3D::new([-2.5, 2.10, 0.3]),
+                    Point3D::new([-3.0, 2.10, 0.3]),
+                    Point3D::new([-3.0, 1.65, 0.3]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.5, 2.10, 0.0]),
+                    Point3D::new([-2.5, 2.10, 0.0]),
+                    Point3D::new([-3.0, 2.10, 0.0]),
+                    Point3D::new([-3.0, 1.65, 0.0]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.5, 2.10, 0.0]),
+                    Point3D::new([-2.5, 2.10, 0.0]),
+                    Point3D::new([-3.0, 2.10, 0.0]),
+                    Point3D::new([-3.0, 1.65, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.5, 2.10, -0.3]),
+                    Point3D::new([-2.5, 2.10, -0.3]),
+                    Point3D::new([-3.0, 2.10, -0.3]),
+                    Point3D::new([-3.0, 1.65, -0.3]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.6, 1.875, -0.3]),
+                    Point3D::new([-2.3, 1.875, -0.3]),
+                    Point3D::new([-2.7, 1.875, -0.3]),
+                    Point3D::new([-2.7, 1.650, -0.3]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-1.6, 1.875, 0.0]),
+                    Point3D::new([-2.3, 1.875, 0.0]),
+                    Point3D::new([-2.7, 1.875, 0.0]),
+                    Point3D::new([-2.7, 1.650, 0.0]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-2.7, 1.650, 0.0]),
+                    Point3D::new([-2.7, 1.425, 0.0]),
+                    Point3D::new([-2.5, 0.975, 0.0]),
+                    Point3D::new([-2.0, 0.750, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-2.7, 1.650, 0.3]),
+                    Point3D::new([-2.7, 1.425, 0.3]),
+                    Point3D::new([-2.5, 0.975, 0.3]),
+                    Point3D::new([-2.0, 0.750, 0.3]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-3.00, 1.6500, 0.3]),
+                    Point3D::new([-3.00, 1.2000, 0.3]),
+                    Point3D::new([-2.65, 0.7875, 0.3]),
+                    Point3D::new([-1.90, 0.4500, 0.3]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-3.00, 1.6500, 0.0]),
+                    Point3D::new([-3.00, 1.2000, 0.0]),
+                    Point3D::new([-2.65, 0.7875, 0.0]),
+                    Point3D::new([-1.90, 0.4500, 0.0]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-3.00, 1.6500, 0.0]),
+                    Point3D::new([-3.00, 1.2000, 0.0]),
+                    Point3D::new([-2.65, 0.7875, 0.0]),
+                    Point3D::new([-1.90, 0.4500, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-3.00, 1.6500, -0.3]),
+                    Point3D::new([-3.00, 1.2000, -0.3]),
+                    Point3D::new([-2.65, 0.7875, -0.3]),
+                    Point3D::new([-1.90, 0.4500, -0.3]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-2.7, 1.650, -0.3]),
+                    Point3D::new([-2.7, 1.425, -0.3]),
+                    Point3D::new([-2.5, 0.975, -0.3]),
+                    Point3D::new([-2.0, 0.750, -0.3]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-2.7, 1.650, 0.0]),
+                    Point3D::new([-2.7, 1.425, 0.0]),
+                    Point3D::new([-2.5, 0.975, 0.0]),
+                    Point3D::new([-2.0, 0.750, 0.0]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.7, 1.275, 0.0]),
+                    Point3D::new([2.6, 1.275, 0.0]),
+                    Point3D::new([2.3, 1.950, 0.0]),
+                    Point3D::new([2.7, 2.250, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.7, 1.275, 0.66]),
+                    Point3D::new([2.6, 1.275, 0.66]),
+                    Point3D::new([2.3, 1.950, 0.25]),
+                    Point3D::new([2.7, 2.250, 0.25]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.7, 0.450, 0.66]),
+                    Point3D::new([3.1, 0.675, 0.66]),
+                    Point3D::new([2.4, 1.875, 0.25]),
+                    Point3D::new([3.3, 2.250, 0.25]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.7, 0.450, 0.0]),
+                    Point3D::new([3.1, 0.675, 0.0]),
+                    Point3D::new([2.4, 1.875, 0.0]),
+                    Point3D::new([3.3, 2.250, 0.0]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.7, 0.450, 0.0]),
+                    Point3D::new([3.1, 0.675, 0.0]),
+                    Point3D::new([2.4, 1.875, 0.0]),
+                    Point3D::new([3.3, 2.250, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.7, 0.450, -0.66]),
+                    Point3D::new([3.1, 0.675, -0.66]),
+                    Point3D::new([2.4, 1.875, -0.25]),
+                    Point3D::new([3.3, 2.250, -0.25]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.7, 1.275, -0.66]),
+                    Point3D::new([2.6, 1.275, -0.66]),
+                    Point3D::new([2.3, 1.950, -0.25]),
+                    Point3D::new([2.7, 2.250, -0.25]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([1.7, 1.275, 0.0]),
+                    Point3D::new([2.6, 1.275, 0.0]),
+                    Point3D::new([2.3, 1.950, 0.0]),
+                    Point3D::new([2.7, 2.250, 0.0]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([2.7, 2.250, 0.0]),
+                    Point3D::new([2.8, 2.325, 0.0]),
+                    Point3D::new([2.9, 2.325, 0.0]),
+                    Point3D::new([2.8, 2.250, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([2.7, 2.250, 0.25]),
+                    Point3D::new([2.8, 2.325, 0.25]),
+                    Point3D::new([2.9, 2.325, 0.15]),
+                    Point3D::new([2.8, 2.250, 0.15]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([3.300, 2.25000, 0.25]),
+                    Point3D::new([3.525, 2.34375, 0.25]),
+                    Point3D::new([3.450, 2.36250, 0.15]),
+                    Point3D::new([3.200, 2.25000, 0.15]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([3.300, 2.25000, 0.0]),
+                    Point3D::new([3.525, 2.34375, 0.0]),
+                    Point3D::new([3.450, 2.36250, 0.0]),
+                    Point3D::new([3.200, 2.25000, 0.0]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([3.300, 2.25000, 0.0]),
+                    Point3D::new([3.525, 2.34375, 0.0]),
+                    Point3D::new([3.450, 2.36250, 0.0]),
+                    Point3D::new([3.200, 2.25000, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([3.300, 2.25000, -0.25]),
+                    Point3D::new([3.525, 2.34375, -0.25]),
+                    Point3D::new([3.450, 2.36250, -0.15]),
+                    Point3D::new([3.200, 2.25000, -0.15]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([2.7, 2.250, -0.25]),
+                    Point3D::new([2.8, 2.325, -0.25]),
+                    Point3D::new([2.9, 2.325, -0.15]),
+                    Point3D::new([2.8, 2.250, -0.15]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([2.7, 2.250, 0.0]),
+                    Point3D::new([2.8, 2.325, 0.0]),
+                    Point3D::new([2.9, 2.325, 0.0]),
+                    Point3D::new([2.8, 2.250, 0.0]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.01, 3.00, 0.0]),
+                    Point3D::new([0.80, 3.00, 0.0]),
+                    Point3D::new([0.00, 2.70, 0.0]),
+                    Point3D::new([0.20, 2.55, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 3.00, 0.010]),
+                    Point3D::new([0.8, 3.00, 0.450]),
+                    Point3D::new([0.0, 2.70, 0.000]),
+                    Point3D::new([0.2, 2.55, 0.112]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.010, 3.00, 0.0]),
+                    Point3D::new([0.450, 3.00, 0.8]),
+                    Point3D::new([0.000, 2.70, 0.0]),
+                    Point3D::new([0.112, 2.55, 0.2]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 3.00, 0.01]),
+                    Point3D::new([0.0, 3.00, 0.80]),
+                    Point3D::new([0.0, 2.70, 0.00]),
+                    Point3D::new([0.0, 2.55, 0.20]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 3.00, 0.01]),
+                    Point3D::new([0.0, 3.00, 0.80]),
+                    Point3D::new([0.0, 2.70, 0.00]),
+                    Point3D::new([0.0, 2.55, 0.20]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-0.010, 3.00, 0.0]),
+                    Point3D::new([-0.450, 3.00, 0.8]),
+                    Point3D::new([00.000, 2.70, 0.0]),
+                    Point3D::new([-0.112, 2.55, 0.2]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([00.0, 3.00, 0.010]),
+                    Point3D::new([-0.8, 3.00, 0.450]),
+                    Point3D::new([00.0, 2.70, 0.000]),
+                    Point3D::new([-0.2, 2.55, 0.112]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-0.01, 3.00, 0.0]),
+                    Point3D::new([-0.80, 3.00, 0.0]),
+                    Point3D::new([00.00, 2.70, 0.0]),
+                    Point3D::new([-0.20, 2.55, 0.0]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-0.01, 3.00, 0.0]),
+                    Point3D::new([-0.80, 3.00, 0.0]),
+                    Point3D::new([00.00, 2.70, 0.0]),
+                    Point3D::new([-0.20, 2.55, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([00.0, 3.00, -0.010]),
+                    Point3D::new([-0.8, 3.00, -0.450]),
+                    Point3D::new([00.0, 2.70, 00.000]),
+                    Point3D::new([-0.2, 2.55, -0.112]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-0.010, 3.00, 00.0]),
+                    Point3D::new([-0.450, 3.00, -0.8]),
+                    Point3D::new([00.000, 2.70, 00.0]),
+                    Point3D::new([-0.112, 2.55, -0.2]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 3.00, -0.01]),
+                    Point3D::new([0.0, 3.00, -0.80]),
+                    Point3D::new([0.0, 2.70, 00.00]),
+                    Point3D::new([0.0, 2.55, -0.20]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 3.00, -0.01]),
+                    Point3D::new([0.0, 3.00, -0.80]),
+                    Point3D::new([0.0, 2.70, 00.00]),
+                    Point3D::new([0.0, 2.55, -0.20]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.010, 3.00, 00.0]),
+                    Point3D::new([0.450, 3.00, -0.8]),
+                    Point3D::new([0.000, 2.70, 00.0]),
+                    Point3D::new([0.112, 2.55, -0.2]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 3.00, -0.010]),
+                    Point3D::new([0.8, 3.00, -0.450]),
+                    Point3D::new([0.0, 2.70, 00.000]),
+                    Point3D::new([0.2, 2.55, -0.112]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.01, 3.00, 0.0]),
+                    Point3D::new([0.80, 3.00, 0.0]),
+                    Point3D::new([0.00, 2.70, 0.0]),
+                    Point3D::new([0.20, 2.55, 0.0]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.2, 2.55, 0.0]),
+                    Point3D::new([0.4, 2.40, 0.0]),
+                    Point3D::new([1.3, 2.40, 0.0]),
+                    Point3D::new([1.3, 2.25, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.2, 2.55, 0.112]),
+                    Point3D::new([0.4, 2.40, 0.224]),
+                    Point3D::new([1.3, 2.40, 0.728]),
+                    Point3D::new([1.3, 2.25, 0.728]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.112, 2.55, 0.2]),
+                    Point3D::new([0.224, 2.40, 0.4]),
+                    Point3D::new([0.728, 2.40, 1.3]),
+                    Point3D::new([0.728, 2.25, 1.3]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 2.55, 0.2]),
+                    Point3D::new([0.0, 2.40, 0.4]),
+                    Point3D::new([0.0, 2.40, 1.3]),
+                    Point3D::new([0.0, 2.25, 1.3]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 2.55, 0.2]),
+                    Point3D::new([0.0, 2.40, 0.4]),
+                    Point3D::new([0.0, 2.40, 1.3]),
+                    Point3D::new([0.0, 2.25, 1.3]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-0.112, 2.55, 0.2]),
+                    Point3D::new([-0.224, 2.40, 0.4]),
+                    Point3D::new([-0.728, 2.40, 1.3]),
+                    Point3D::new([-0.728, 2.25, 1.3]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-0.2, 2.55, 0.112]),
+                    Point3D::new([-0.4, 2.40, 0.224]),
+                    Point3D::new([-1.3, 2.40, 0.728]),
+                    Point3D::new([-1.3, 2.25, 0.728]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-0.2, 2.55, 0.0]),
+                    Point3D::new([-0.4, 2.40, 0.0]),
+                    Point3D::new([-1.3, 2.40, 0.0]),
+                    Point3D::new([-1.3, 2.25, 0.0]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-0.2, 2.55, 0.0]),
+                    Point3D::new([-0.4, 2.40, 0.0]),
+                    Point3D::new([-1.3, 2.40, 0.0]),
+                    Point3D::new([-1.3, 2.25, 0.0]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-0.2, 2.55, -0.112]),
+                    Point3D::new([-0.4, 2.40, -0.224]),
+                    Point3D::new([-1.3, 2.40, -0.728]),
+                    Point3D::new([-1.3, 2.25, -0.728]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([-0.112, 2.55, -0.2]),
+                    Point3D::new([-0.224, 2.40, -0.4]),
+                    Point3D::new([-0.728, 2.40, -1.3]),
+                    Point3D::new([-0.728, 2.25, -1.3]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 2.55, -0.2]),
+                    Point3D::new([0.0, 2.40, -0.4]),
+                    Point3D::new([0.0, 2.40, -1.3]),
+                    Point3D::new([0.0, 2.25, -1.3]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+        build_world.add(Arc::new(BezierPatch::new(
+            BezierSurface::from_curves(vec![
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.0, 2.55, -0.2]),
+                    Point3D::new([0.0, 2.40, -0.4]),
+                    Point3D::new([0.0, 2.40, -1.3]),
+                    Point3D::new([0.0, 2.25, -1.3]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.112, 2.55, -0.2]),
+                    Point3D::new([0.224, 2.40, -0.4]),
+                    Point3D::new([0.728, 2.40, -1.3]),
+                    Point3D::new([0.728, 2.25, -1.3]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.2, 2.55, -0.112]),
+                    Point3D::new([0.4, 2.40, -0.224]),
+                    Point3D::new([1.3, 2.40, -0.728]),
+                    Point3D::new([1.3, 2.25, -0.728]),
+                ]),
+                BezierCurve3D::from_points(vec![
+                    Point3D::new([0.2, 2.55, 0.0]),
+                    Point3D::new([0.4, 2.40, 0.0]),
+                    Point3D::new([1.3, 2.40, 0.0]),
+                    Point3D::new([1.3, 2.25, 0.0]),
+                ]),
+            ]),
+            mat.clone(),
+        )));
+    }
 
     // Make the world into a bvh
     let mut world = HittableList::new();
@@ -1076,9 +1843,9 @@ pub fn utah_teapot(width: i32, samples: i32, depth: i32, show: bool, save: bool)
     cam.samples_per_pixel = samples;
     cam.max_depth = depth;
 
-    cam.vfov = 90.0;
-    cam.look_from = Vec3::new(5.0, 2.0, 3.0);
-    cam.look_at = Vec3::new(0.0, 0.0, 0.0);
+    cam.vfov = 35.0;
+    cam.look_from = Vec3::new(5.0, 5.0, 5.0);
+    cam.look_at = Vec3::new(0.0, 1.0, 0.0);
     cam.v_up = Vec3::new(0.0, 1.0, 0.0);
 
     cam.defocus_angle = 0.0;
@@ -1088,7 +1855,7 @@ pub fn utah_teapot(width: i32, samples: i32, depth: i32, show: bool, save: bool)
     let buffer = cam.render(world, None, true, 6);
     if save {
         save_image(
-            "Book1_Final",
+            "Teapot",
             &buffer,
             cam.render_width() as u32,
             cam.render_height() as u32,
@@ -1103,483 +1870,4 @@ pub fn utah_teapot(width: i32, samples: i32, depth: i32, show: bool, save: bool)
             cam.render_height() as u32,
         );
     }
-    /*#
-    # teapot: this is the original non-rational bezier teapot data. the data
-    #         comes from Martin Newel and Jim Blinn.
-    #
-    # Thomas V Thompson II
-    # January 28 2000
-    #
-
-    TeaSrfs: array(
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( -1.4, 2.25, 0.0 ),
-                       pt( -1.3375, 2.38125, 0.0 ),
-                       pt( -1.4375, 2.38125, 0.0 ),
-                       pt( -1.5, 2.25, 0.0 ) ),
-            array( pt( -1.4, 2.25, -0.784 ),
-                       pt( -1.3375, 2.38125, -0.749 ),
-                       pt( -1.4375, 2.38125, -0.805 ),
-                       pt( -1.5, 2.25, -0.84 ) ),
-            array( pt( -0.784, 2.25, -1.4 ),
-                       pt( -0.749, 2.38125, -1.3375 ),
-                       pt( -0.805, 2.38125, -1.4375 ),
-                       pt( -0.84, 2.25, -1.5 ) ),
-            array( pt( 0.0, 2.25, -1.4 ),
-                       pt( 0.0, 2.38125, -1.3375 ),
-                       pt( 0.0, 2.38125, -1.4375 ),
-                       pt( 0.0, 2.25, -1.5 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 0.0, 2.25, -1.4 ),
-                       pt( 0.0, 2.38125, -1.3375 ),
-                       pt( 0.0, 2.38125, -1.4375 ),
-                       pt( 0.0, 2.25, -1.5 ) ),
-            array( pt( 0.784, 2.25, -1.4 ),
-                       pt( 0.749, 2.38125, -1.3375 ),
-                       pt( 0.805, 2.38125, -1.4375 ),
-                       pt( 0.84, 2.25, -1.5 ) ),
-            array( pt( 1.4, 2.25, -0.784 ),
-                       pt( 1.3375, 2.38125, -0.749 ),
-                       pt( 1.4375, 2.38125, -0.805 ),
-                       pt( 1.5, 2.25, -0.84 ) ),
-            array( pt( 1.4, 2.25, 0.0 ),
-                       pt( 1.3375, 2.38125, 0.0 ),
-                       pt( 1.4375, 2.38125, 0.0 ),
-                       pt( 1.5, 2.25, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 1.5, 2.25, 0.0 ),
-                       pt( 1.75, 1.725, 0.0 ),
-                       pt( 2, 1.2, 0.0 ),
-                       pt( 2, 0.75, 0.0 ) ),
-            array( pt( 1.5, 2.25, 0.84 ),
-                       pt( 1.75, 1.725, 0.98 ),
-                       pt( 2, 1.2, 1.12 ),
-                       pt( 2, 0.75, 1.12 ) ),
-            array( pt( 0.84, 2.25, 1.5 ),
-                       pt( 0.98, 1.725, 1.75 ),
-                       pt( 1.12, 1.2, 2 ),
-                       pt( 1.12, 0.75, 2 ) ),
-            array( pt( 0.0, 2.25, 1.5 ),
-                       pt( 0.0, 1.725, 1.75 ),
-                       pt( 0.0, 1.2, 2 ),
-                       pt( 0.0, 0.75, 2 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 0.0, 2.25, 1.5 ),
-                       pt( 0.0, 1.725, 1.75 ),
-                       pt( 0.0, 1.2, 2 ),
-                       pt( 0.0, 0.75, 2 ) ),
-            array( pt( -0.84, 2.25, 1.5 ),
-                       pt( -0.98, 1.725, 1.75 ),
-                       pt( -1.12, 1.2, 2 ),
-                       pt( -1.12, 0.75, 2 ) ),
-            array( pt( -1.5, 2.25, 0.84 ),
-                       pt( -1.75, 1.725, 0.98 ),
-                       pt( -2, 1.2, 1.12 ),
-                       pt( -2, 0.75, 1.12 ) ),
-            array( pt( -1.5, 2.25, 0.0 ),
-                       pt( -1.75, 1.725, 0.0 ),
-                       pt( -2, 1.2, 0.0 ),
-                       pt( -2, 0.75, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( -1.5, 2.25, 0.0 ),
-                       pt( -1.75, 1.725, 0.0 ),
-                       pt( -2, 1.2, 0.0 ),
-                       pt( -2, 0.75, 0.0 ) ),
-            array( pt( -1.5, 2.25, -0.84 ),
-                       pt( -1.75, 1.725, -0.98 ),
-                       pt( -2, 1.2, -1.12 ),
-                       pt( -2, 0.75, -1.12 ) ),
-            array( pt( -0.84, 2.25, -1.5 ),
-                       pt( -0.98, 1.725, -1.75 ),
-                       pt( -1.12, 1.2, -2 ),
-                       pt( -1.12, 0.75, -2 ) ),
-            array( pt( 0.0, 2.25, -1.5 ),
-                       pt( 0.0, 1.725, -1.75 ),
-                       pt( 0.0, 1.2, -2 ),
-                       pt( 0.0, 0.75, -2 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 0.0, 2.25, -1.5 ),
-                       pt( 0.0, 1.725, -1.75 ),
-                       pt( 0.0, 1.2, -2 ),
-                       pt( 0.0, 0.75, -2 ) ),
-            array( pt( 0.84, 2.25, -1.5 ),
-                       pt( 0.98, 1.725, -1.75 ),
-                       pt( 1.12, 1.2, -2 ),
-                       pt( 1.12, 0.75, -2 ) ),
-            array( pt( 1.5, 2.25, -0.84 ),
-                       pt( 1.75, 1.725, -0.98 ),
-                       pt( 2, 1.2, -1.12 ),
-                       pt( 2, 0.75, -1.12 ) ),
-            array( pt( 1.5, 2.25, 0.0 ),
-                       pt( 1.75, 1.725, 0.0 ),
-                       pt( 2, 1.2, 0.0 ),
-                       pt( 2, 0.75, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 2, 0.75, 0.0 ),
-                       pt( 2, 0.3, 0.0 ),
-                       pt( 1.5, 0.075, 0.0 ),
-                       pt( 1.5, 0.0, 0.0 ) ),
-            array( pt( 2, 0.75, 1.12 ),
-                       pt( 2, 0.3, 1.12 ),
-                       pt( 1.5, 0.075, 0.84 ),
-                       pt( 1.5, 0.0, 0.84 ) ),
-            array( pt( 1.12, 0.75, 2 ),
-                       pt( 1.12, 0.3, 2 ),
-                       pt( 0.84, 0.075, 1.5 ),
-                       pt( 0.84, 0.0, 1.5 ) ),
-            array( pt( 0.0, 0.75, 2 ),
-                       pt( 0.0, 0.3, 2 ),
-                       pt( 0.0, 0.075, 1.5 ),
-                       pt( 0.0, 0.0, 1.5 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 0.0, 0.75, 2 ),
-                       pt( 0.0, 0.3, 2 ),
-                       pt( 0.0, 0.075, 1.5 ),
-                       pt( 0.0, 0.0, 1.5 ) ),
-            array( pt( -1.12, 0.75, 2 ),
-                       pt( -1.12, 0.3, 2 ),
-                       pt( -0.84, 0.075, 1.5 ),
-                       pt( -0.84, 0.0, 1.5 ) ),
-            array( pt( -2, 0.75, 1.12 ),
-                       pt( -2, 0.3, 1.12 ),
-                       pt( -1.5, 0.075, 0.84 ),
-                       pt( -1.5, 0.0, 0.84 ) ),
-            array( pt( -2, 0.75, 0.0 ),
-                       pt( -2, 0.3, 0.0 ),
-                       pt( -1.5, 0.075, 0.0 ),
-                       pt( -1.5, 0.0, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( -2, 0.75, 0.0 ),
-                       pt( -2, 0.3, 0.0 ),
-                       pt( -1.5, 0.075, 0.0 ),
-                       pt( -1.5, 0.0, 0.0 ) ),
-            array( pt( -2, 0.75, -1.12 ),
-                       pt( -2, 0.3, -1.12 ),
-                       pt( -1.5, 0.075, -0.84 ),
-                       pt( -1.5, 0.0, -0.84 ) ),
-            array( pt( -1.12, 0.75, -2 ),
-                       pt( -1.12, 0.3, -2 ),
-                       pt( -0.84, 0.075, -1.5 ),
-                       pt( -0.84, 0.0, -1.5 ) ),
-            array( pt( 0.0, 0.75, -2 ),
-                       pt( 0.0, 0.3, -2 ),
-                       pt( 0.0, 0.075, -1.5 ),
-                       pt( 0.0, 0.0, -1.5 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 0.0, 0.75, -2 ),
-                       pt( 0.0, 0.3, -2 ),
-                       pt( 0.0, 0.075, -1.5 ),
-                       pt( 0.0, 0.0, -1.5 ) ),
-            array( pt( 1.12, 0.75, -2 ),
-                       pt( 1.12, 0.3, -2 ),
-                       pt( 0.84, 0.075, -1.5 ),
-                       pt( 0.84, 0.0, -1.5 ) ),
-            array( pt( 2, 0.75, -1.12 ),
-                       pt( 2, 0.3, -1.12 ),
-                       pt( 1.5, 0.075, -0.84 ),
-                       pt( 1.5, 0.0, -0.84 ) ),
-            array( pt( 2, 0.75, 0.0 ),
-                       pt( 2, 0.3, 0.0 ),
-                       pt( 1.5, 0.075, 0.0 ),
-                       pt( 1.5, 0.0, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( -1.6, 1.875, 0.0 ),
-                       pt( -2.3, 1.875, 0.0 ),
-                       pt( -2.7, 1.875, 0.0 ),
-                       pt( -2.7, 1.65, 0.0 ) ),
-            array( pt( -1.6, 1.875, 0.3 ),
-                       pt( -2.3, 1.875, 0.3 ),
-                       pt( -2.7, 1.875, 0.3 ),
-                       pt( -2.7, 1.65, 0.3 ) ),
-            array( pt( -1.5, 2.1, 0.3 ),
-                       pt( -2.5, 2.1, 0.3 ),
-                       pt( -3, 2.1, 0.3 ),
-                       pt( -3, 1.65, 0.3 ) ),
-            array( pt( -1.5, 2.1, 0.0 ),
-                       pt( -2.5, 2.1, 0.0 ),
-                       pt( -3, 2.1, 0.0 ),
-                       pt( -3, 1.65, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( -1.5, 2.1, 0.0 ),
-                       pt( -2.5, 2.1, 0.0 ),
-                       pt( -3, 2.1, 0.0 ),
-                       pt( -3, 1.65, 0.0 ) ),
-            array( pt( -1.5, 2.1, -0.3 ),
-                       pt( -2.5, 2.1, -0.3 ),
-                       pt( -3, 2.1, -0.3 ),
-                       pt( -3, 1.65, -0.3 ) ),
-            array( pt( -1.6, 1.875, -0.3 ),
-                       pt( -2.3, 1.875, -0.3 ),
-                       pt( -2.7, 1.875, -0.3 ),
-                       pt( -2.7, 1.65, -0.3 ) ),
-            array( pt( -1.6, 1.875, 0.0 ),
-                       pt( -2.3, 1.875, 0.0 ),
-                       pt( -2.7, 1.875, 0.0 ),
-                       pt( -2.7, 1.65, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( -2.7, 1.65, 0.0 ),
-                       pt( -2.7, 1.425, 0.0 ),
-                       pt( -2.5, 0.975, 0.0 ),
-                       pt( -2, 0.75, 0.0 ) ),
-            array( pt( -2.7, 1.65, 0.3 ),
-                       pt( -2.7, 1.425, 0.3 ),
-                       pt( -2.5, 0.975, 0.3 ),
-                       pt( -2, 0.75, 0.3 ) ),
-            array( pt( -3, 1.65, 0.3 ),
-                       pt( -3, 1.2, 0.3 ),
-                       pt( -2.65, 0.7875, 0.3 ),
-                       pt( -1.9, 0.45, 0.3 ) ),
-            array( pt( -3, 1.65, 0.0 ),
-                       pt( -3, 1.2, 0.0 ),
-                       pt( -2.65, 0.7875, 0.0 ),
-                       pt( -1.9, 0.45, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( -3, 1.65, 0.0 ),
-                       pt( -3, 1.2, 0.0 ),
-                       pt( -2.65, 0.7875, 0.0 ),
-                       pt( -1.9, 0.45, 0.0 ) ),
-            array( pt( -3, 1.65, -0.3 ),
-                       pt( -3, 1.2, -0.3 ),
-                       pt( -2.65, 0.7875, -0.3 ),
-                       pt( -1.9, 0.45, -0.3 ) ),
-            array( pt( -2.7, 1.65, -0.3 ),
-                       pt( -2.7, 1.425, -0.3 ),
-                       pt( -2.5, 0.975, -0.3 ),
-                       pt( -2, 0.75, -0.3 ) ),
-            array( pt( -2.7, 1.65, 0.0 ),
-                       pt( -2.7, 1.425, 0.0 ),
-                       pt( -2.5, 0.975, 0.0 ),
-                       pt( -2, 0.75, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 1.7, 1.275, 0.0 ),
-                       pt( 2.6, 1.275, 0.0 ),
-                       pt( 2.3, 1.95, 0.0 ),
-                       pt( 2.7, 2.25, 0.0 ) ),
-            array( pt( 1.7, 1.275, 0.66 ),
-                       pt( 2.6, 1.275, 0.66 ),
-                       pt( 2.3, 1.95, 0.25 ),
-                       pt( 2.7, 2.25, 0.25 ) ),
-            array( pt( 1.7, 0.45, 0.66 ),
-                       pt( 3.1, 0.675, 0.66 ),
-                       pt( 2.4, 1.875, 0.25 ),
-                       pt( 3.3, 2.25, 0.25 ) ),
-            array( pt( 1.7, 0.45, 0.0 ),
-                       pt( 3.1, 0.675, 0.0 ),
-                       pt( 2.4, 1.875, 0.0 ),
-                       pt( 3.3, 2.25, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 1.7, 0.45, 0.0 ),
-                       pt( 3.1, 0.675, 0.0 ),
-                       pt( 2.4, 1.875, 0.0 ),
-                       pt( 3.3, 2.25, 0.0 ) ),
-            array( pt( 1.7, 0.45, -0.66 ),
-                       pt( 3.1, 0.675, -0.66 ),
-                       pt( 2.4, 1.875, -0.25 ),
-                       pt( 3.3, 2.25, -0.25 ) ),
-            array( pt( 1.7, 1.275, -0.66 ),
-                       pt( 2.6, 1.275, -0.66 ),
-                       pt( 2.3, 1.95, -0.25 ),
-                       pt( 2.7, 2.25, -0.25 ) ),
-            array( pt( 1.7, 1.275, 0.0 ),
-                       pt( 2.6, 1.275, 0.0 ),
-                       pt( 2.3, 1.95, 0.0 ),
-                       pt( 2.7, 2.25, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 2.7, 2.25, 0.0 ),
-                       pt( 2.8, 2.325, 0.0 ),
-                       pt( 2.9, 2.325, 0.0 ),
-                       pt( 2.8, 2.25, 0.0 ) ),
-            array( pt( 2.7, 2.25, 0.25 ),
-                       pt( 2.8, 2.325, 0.25 ),
-                       pt( 2.9, 2.325, 0.15 ),
-                       pt( 2.8, 2.25, 0.15 ) ),
-            array( pt( 3.3, 2.25, 0.25 ),
-                       pt( 3.525, 2.34375, 0.25 ),
-                       pt( 3.45, 2.3625, 0.15 ),
-                       pt( 3.2, 2.25, 0.15 ) ),
-            array( pt( 3.3, 2.25, 0.0 ),
-                       pt( 3.525, 2.34375, 0.0 ),
-                       pt( 3.45, 2.3625, 0.0 ),
-                       pt( 3.2, 2.25, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 3.3, 2.25, 0.0 ),
-                       pt( 3.525, 2.34375, 0.0 ),
-                       pt( 3.45, 2.3625, 0.0 ),
-                       pt( 3.2, 2.25, 0.0 ) ),
-            array( pt( 3.3, 2.25, -0.25 ),
-                       pt( 3.525, 2.34375, -0.25 ),
-                       pt( 3.45, 2.3625, -0.15 ),
-                       pt( 3.2, 2.25, -0.15 ) ),
-            array( pt( 2.7, 2.25, -0.25 ),
-                       pt( 2.8, 2.325, -0.25 ),
-                       pt( 2.9, 2.325, -0.15 ),
-                       pt( 2.8, 2.25, -0.15 ) ),
-            array( pt( 2.7, 2.25, 0.0 ),
-                       pt( 2.8, 2.325, 0.0 ),
-                       pt( 2.9, 2.325, 0.0 ),
-                       pt( 2.8, 2.25, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 0.01, 3, 0.0 ),
-                       pt( 0.8, 3, 0.0 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( 0.2, 2.55, 0.0 ) ),
-            array( pt( 0.0, 3, 0.01 ),
-                       pt( 0.8, 3, 0.45 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( 0.2, 2.55, 0.112 ) ),
-            array( pt( 0.01, 3, 0.0 ),
-                       pt( 0.45, 3, 0.8 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( 0.112, 2.55, 0.2 ) ),
-            array( pt( 0.0, 3, 0.01 ),
-                       pt( 0.0, 3, 0.8 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( 0.0, 2.55, 0.2 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 0.0, 3, 0.01 ),
-                       pt( 0.0, 3, 0.8 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( 0.0, 2.55, 0.2 ) ),
-            array( pt( -0.01, 3, 0.0 ),
-                       pt( -0.45, 3, 0.8 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( -0.112, 2.55, 0.2 ) ),
-            array( pt( 0.0, 3, 0.01 ),
-                       pt( -0.8, 3, 0.45 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( -0.2, 2.55, 0.112 ) ),
-            array( pt( -0.01, 3, 0.0 ),
-                       pt( -0.8, 3, 0.0 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( -0.2, 2.55, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( -0.01, 3, 0.0 ),
-                       pt( -0.8, 3, 0.0 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( -0.2, 2.55, 0.0 ) ),
-            array( pt( 0.0, 3, -0.01 ),
-                       pt( -0.8, 3, -0.45 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( -0.2, 2.55, -0.112 ) ),
-            array( pt( -0.01, 3, 0.0 ),
-                       pt( -0.45, 3, -0.8 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( -0.112, 2.55, -0.2 ) ),
-            array( pt( 0.0, 3, -0.01 ),
-                       pt( 0.0, 3, -0.8 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( 0.0, 2.55, -0.2 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 0.0, 3, -0.01 ),
-                       pt( 0.0, 3, -0.8 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( 0.0, 2.55, -0.2 ) ),
-            array( pt( 0.01, 3, 0.0 ),
-                       pt( 0.45, 3, -0.8 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( 0.112, 2.55, -0.2 ) ),
-            array( pt( 0.0, 3, -0.01 ),
-                       pt( 0.8, 3, -0.45 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( 0.2, 2.55, -0.112 ) ),
-            array( pt( 0.01, 3, 0.0 ),
-                       pt( 0.8, 3, 0.0 ),
-                       pt( 0.0, 2.7, 0.0 ),
-                       pt( 0.2, 2.55, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 0.2, 2.55, 0.0 ),
-                       pt( 0.4, 2.4, 0.0 ),
-                       pt( 1.3, 2.4, 0.0 ),
-                       pt( 1.3, 2.25, 0.0 ) ),
-            array( pt( 0.2, 2.55, 0.112 ),
-                       pt( 0.4, 2.4, 0.224 ),
-                       pt( 1.3, 2.4, 0.728 ),
-                       pt( 1.3, 2.25, 0.728 ) ),
-            array( pt( 0.112, 2.55, 0.2 ),
-                       pt( 0.224, 2.4, 0.4 ),
-                       pt( 0.728, 2.4, 1.3 ),
-                       pt( 0.728, 2.25, 1.3 ) ),
-            array( pt( 0.0, 2.55, 0.2 ),
-                       pt( 0.0, 2.4, 0.4 ),
-                       pt( 0.0, 2.4, 1.3 ),
-                       pt( 0.0, 2.25, 1.3 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 0.0, 2.55, 0.2 ),
-                       pt( 0.0, 2.4, 0.4 ),
-                       pt( 0.0, 2.4, 1.3 ),
-                       pt( 0.0, 2.25, 1.3 ) ),
-            array( pt( -0.112, 2.55, 0.2 ),
-                       pt( -0.224, 2.4, 0.4 ),
-                       pt( -0.728, 2.4, 1.3 ),
-                       pt( -0.728, 2.25, 1.3 ) ),
-            array( pt( -0.2, 2.55, 0.112 ),
-                       pt( -0.4, 2.4, 0.224 ),
-                       pt( -1.3, 2.4, 0.728 ),
-                       pt( -1.3, 2.25, 0.728 ) ),
-            array( pt( -0.2, 2.55, 0.0 ),
-                       pt( -0.4, 2.4, 0.0 ),
-                       pt( -1.3, 2.4, 0.0 ),
-                       pt( -1.3, 2.25, 0.0 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( -0.2, 2.55, 0.0 ),
-                       pt( -0.4, 2.4, 0.0 ),
-                       pt( -1.3, 2.4, 0.0 ),
-                       pt( -1.3, 2.25, 0.0 ) ),
-            array( pt( -0.2, 2.55, -0.112 ),
-                       pt( -0.4, 2.4, -0.224 ),
-                       pt( -1.3, 2.4, -0.728 ),
-                       pt( -1.3, 2.25, -0.728 ) ),
-            array( pt( -0.112, 2.55, -0.2 ),
-                       pt( -0.224, 2.4, -0.4 ),
-                       pt( -0.728, 2.4, -1.3 ),
-                       pt( -0.728, 2.25, -1.3 ) ),
-            array( pt( 0.0, 2.55, -0.2 ),
-                       pt( 0.0, 2.4, -0.4 ),
-                       pt( 0.0, 2.4, -1.3 ),
-                       pt( 0.0, 2.25, -1.3 ) ) ) ),
-        surface( 4, "ec_open", "kv_bezier", 4, "ec_open", "kv_bezier",
-        array(
-            array( pt( 0.0, 2.55, -0.2 ),
-                       pt( 0.0, 2.4, -0.4 ),
-                       pt( 0.0, 2.4, -1.3 ),
-                       pt( 0.0, 2.25, -1.3 ) ),
-            array( pt( 0.112, 2.55, -0.2 ),
-                       pt( 0.224, 2.4, -0.4 ),
-                       pt( 0.728, 2.4, -1.3 ),
-                       pt( 0.728, 2.25, -1.3 ) ),
-            array( pt( 0.2, 2.55, -0.112 ),
-                       pt( 0.4, 2.4, -0.224 ),
-                       pt( 1.3, 2.4, -0.728 ),
-                       pt( 1.3, 2.25, -0.728 ) ),
-            array( pt( 0.2, 2.55, 0.0 ),
-                       pt( 0.4, 2.4, 0.0 ),
-                       pt( 1.3, 2.4, 0.0 ),
-                       pt( 1.3, 2.25, 0.0 ) ) ) ) );
-
-     */
 }
