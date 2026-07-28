@@ -40,6 +40,10 @@ impl Interval {
         self.max
     }
 
+    pub fn mid(&self) -> f64 {
+        (self.max + self.min) * 0.5
+    }
+
     pub fn set_min(&mut self, val: f64) {
         self.min = val;
     }

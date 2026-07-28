@@ -1000,7 +1000,7 @@ pub fn cornell_box_glass_sphere(width: i32, samples: i32, depth: i32, show: bool
     }
 }
 
-pub fn utah_teapot(width: i32, samples: i32, depth: i32, show: bool, save: bool) {
+pub fn utah_teapot(width: i32, samples: i32, depth: i32, show: bool, save: bool, threads: u32) {
     // Model from https://users.cs.utah.edu/~dejohnso/models/teapot.html
 
     // World
@@ -1852,7 +1852,7 @@ pub fn utah_teapot(width: i32, samples: i32, depth: i32, show: bool, save: bool)
     cam.focus_dist = 10.0;
 
     let world = Arc::new(world);
-    let buffer = cam.render(world, None, true, 6);
+    let buffer = cam.render(world, None, true, threads);
     if save {
         save_image(
             "Teapot",

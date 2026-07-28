@@ -90,6 +90,17 @@ impl AABB {
         };
         AABB::new(x, y, z)
     }
+
+    pub fn expand(&self, delta: f64) -> AABB {
+        let x = self.x.expand(delta);
+        let y = self.y.expand(delta);
+        let z = self.z.expand(delta);
+        AABB::new(x, y, z)
+    }
+
+    pub fn center(&self) -> Vec3 {
+        Vec3::new(self.x.mid(), self.y.mid(), self.z.mid())
+    }
 }
 
 // Add

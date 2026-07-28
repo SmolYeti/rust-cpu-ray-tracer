@@ -31,4 +31,4 @@ pub mod solid_texture;
 pub mod sphere;
 pub mod sphere_pdf;
 pub mod texture;
-
+pub mod triangle;
