@@ -5,6 +5,7 @@ use crate::hittable_list::HittableList;
 use crate::interval::Interval;
 use crate::ray::Ray3;
 use nurbs::utility::random_u32_range;
+use nurbs::vector_3::Vec3;
 
 use std::cmp::Ordering;
 use std::sync::Arc;
@@ -40,6 +41,19 @@ impl Hittable for BVHNode {
 
     fn bounding_box(&self) -> AABB {
         AABB::copy(&self.bbox)
+    }
+
+    fn pdf_value(&self, origin: &Vec3, direction: &Vec3) -> f64 {
+        self.left.pdf_value(origin, direction) * 0.5 +   self.right.pdf_value(origin, direction) * 0.5
+    }
+
+    fn random(&self, origin: &Vec3) -> Vec3 {
+        let rand_side = random_u32_range(0, 1) as usize;
+        if rand_side == 0 {
+            self.left.random(origin)
+        } else {
+            self.right.random(origin)
+        }
     }
 }
 

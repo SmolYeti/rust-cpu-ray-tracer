@@ -637,7 +637,7 @@ pub fn cornell_smoke(width: i32, samples: i32, depth: i32, show: bool, save: boo
     }
 }
 
-pub fn final_scene_book2(width: i32, samples: i32, depth: i32, show: bool, save: bool) {
+pub fn final_scene_book2(width: i32, samples: i32, depth: i32, show: bool, save: bool, threads: u32) {
     // Create the ground
     let mut boxes_1 = HittableList::new();
     let ground_mat: Arc<dyn Material + Sync + Send> =
@@ -770,7 +770,7 @@ pub fn final_scene_book2(width: i32, samples: i32, depth: i32, show: bool, save:
     cam.defocus_angle = 0.0;
 
     let world = Arc::new(scene);
-    let buffer = cam.render(world, Some(light), true, 6);
+    let buffer = cam.render(world, Some(light), true, threads);
 
     if save {
         save_image(

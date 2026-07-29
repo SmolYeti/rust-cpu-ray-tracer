@@ -1,6 +1,5 @@
 use crate::aabb::AABB;
 use crate::hittable::{HitRecord, Hittable};
-use crate::hittable_list::HittableList;
 use crate::interval::Interval;
 use crate::material::Material;
 use crate::ray::Ray3;
@@ -20,6 +19,7 @@ pub struct Triangle {
     c: Vec3,
     normal: Vec3,
     area: f64,
+    uvs: [f64; 6],
 }
 
 impl Hittable for Triangle {
@@ -31,17 +31,17 @@ impl Hittable for Triangle {
 
         let ray_cross_e2 = ray_in.direction().cross(&e2);
         let det = e1.dot(&ray_cross_e2);
-        
+
         if det.abs() < f64::EPSILON {
-            return false
+            return false;
         }
-        
+
         let inv_det = 1.0 / det;
         let s = ray_in.origin() - self.a;
         let u = inv_det * s.dot(&ray_cross_e2);
 
         if u < 0.0 || u > 1.0 {
-            return false
+            return false;
         }
 
         let s_cross_e1 = s.cross(&e1);
@@ -56,12 +56,12 @@ impl Hittable for Triangle {
             hit_record.point = ray_in.at(t);
             hit_record.mat = Arc::clone(&self.mat);
             hit_record.set_face_normal(ray_in, self.normal);
-            hit_record.u = u;
-            hit_record.v = v;
+            hit_record.u = u * self.uvs[4] + v * self.uvs[2] + (1.0 - u - v) * self.uvs[0];
+            hit_record.v = u * self.uvs[5] + v * self.uvs[3] + (1.0 - u - v) * self.uvs[1];
 
-            return true
+            return true;
         } else {
-            return false
+            return false;
         }
     }
 
@@ -96,7 +96,13 @@ impl Hittable for Triangle {
 }
 
 impl Triangle {
-    pub fn new(a: Vec3, b: Vec3, c: Vec3, mat: Arc<dyn Material + Sync + Send>) -> Triangle {
+    pub fn new(
+        a: Vec3,
+        b: Vec3,
+        c: Vec3,
+        uvs: [f64; 6],
+        mat: Arc<dyn Material + Sync + Send>,
+    ) -> Triangle {
         let bbox_0 = AABB::from_vec3s(a, b);
         let bbox_1 = AABB::from_vec3s(a, c);
         let bbox = AABB::from_aabbs(&bbox_0, &bbox_1);
@@ -112,6 +118,7 @@ impl Triangle {
             c,
             normal,
             area,
+            uvs,
         }
     }
 }
