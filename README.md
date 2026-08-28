@@ -7,7 +7,7 @@ I also have added multi-threading & saving of PNGs through the libraries [**scop
 
 Plans for this repo are:
 
-- Copy over NURBS Library from Glacier Engine
+- Copy over NURBS Library from Glacier Engine (Private personal repo)
 - Implement ray tracing (similar to that of books 1-3 of the [*Ray Tracing: In One Weekend*](https://raytracing.github.io/) series) on the GPU (Vulkan) with versions using the compute pipeline and the hardware accelerated ray tracing pipeline
 - Implement PBR
 - Add support for ray tracing NURBS on CPU & GPU
